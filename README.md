@@ -85,9 +85,12 @@ All checks must pass before code is merged. View the CI status: [![CI Status](ht
 When a version tag (e.g., `v0.2.0`) is pushed:
 
 1. **Create Release** - Automatically creates a GitHub release
-2. **Build Binaries** - Compiles for multiple platforms (Linux x64, macOS x64/ARM64)
+2. **Build Binaries** - Compiles for multiple platforms (Linux x64, macOS ARM64)
 3. **Upload Assets** - Attaches binaries and checksums to the release
-4. **Update Homebrew** - Automatically updates the Homebrew formula
+4. **Update Homebrew** - Automatically updates the formula with binary URLs and SHA256s
+5. **Verify Installation** - Tests the Homebrew installation automatically
+
+Users get fast binary installations (~2 seconds) with zero build dependencies!
 
 ### Local CI Simulation
 
@@ -105,28 +108,34 @@ This runs formatting check, lints, tests, and builds - exactly like the CI pipel
 
 ## 📦 Installation
 
-### Option 1: Homebrew (macOS - Recommended)
+### Quick Start (macOS - Recommended)
 
-The easiest way to install on macOS:
+The simplest way to get started:
 
 ```bash
-# Add the tap
-brew tap adjmunro/tap https://github.com/adjmunro/homebrew-tap
-
-# Install webtags
+# Install (takes ~2 seconds, no dependencies!)
 brew install webtags
 
-# Follow the post-install instructions to set up native messaging
+# Auto-setup for all browsers (one command!)
+curl -sSL https://raw.githubusercontent.com/adjmunro/webtags/master/scripts/setup-manifests.sh | bash
 ```
 
-The Homebrew formula will:
-- Install the native messaging host binary
-- Provide manifest templates for Chrome/Firefox/Safari
-- Display setup instructions
+That's it! The setup script automatically:
+- ✅ Detects all installed browsers (Chrome, Edge, Firefox, Zen, Brave, Safari, etc.)
+- ✅ Creates native messaging manifests in the correct locations
+- ✅ Configures the binary path
 
-You'll still need to:
-1. Install the browser extension manually (Chrome Web Store/Firefox Add-ons coming soon)
-2. Link the native messaging manifest for your browser (instructions shown after install)
+**Supported Browsers:**
+- **Chromium-based**: Chrome, Edge, Brave, Chromium (including ungoogled variants like Helium)
+- **Firefox-based**: Firefox, Zen Browser, Waterfox, LibreWolf
+- **Safari**: Safari (macOS)
+
+**Next Steps:**
+1. Install the browser extension (Chrome Web Store/Firefox Add-ons coming soon)
+2. Extension will automatically connect to the native host
+
+**Manual Setup:**
+If you prefer manual configuration or need to customize, see [Browser Setup Guide](docs/BROWSER_SETUP.md)
 
 ### Option 2: Manual Installation
 
