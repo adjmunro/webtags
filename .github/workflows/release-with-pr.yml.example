@@ -1,0 +1,51 @@
+# Example: Create PR in homebrew-tap instead of direct push
+# Most secure - requires manual approval
+
+name: Release (with PR)
+
+# ... (same as before until update-homebrew job)
+
+jobs:
+  update-homebrew:
+    name: Create Homebrew Formula PR
+    needs: [create-release, build-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: adjmunro/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}  # Fine-grained or classic
+          path: homebrew-tap
+
+      - name: Calculate source archive SHA256
+        run: |
+          curl -sL https://github.com/adjmunro/webtags/archive/refs/tags/v${{ needs.create-release.outputs.version }}.tar.gz | shasum -a 256 | awk '{print $1}' > source.sha256
+          SHA256=$(cat source.sha256)
+          echo "SHA256=$SHA256" >> $GITHUB_ENV
+
+      - name: Update formula
+        run: |
+          cd homebrew-tap
+          sed -i "s|url \".*\"|url \"https://github.com/adjmunro/webtags/archive/refs/tags/v${{ needs.create-release.outputs.version }}.tar.gz\"|" Formula/webtags.rb
+          sed -i "s|sha256 \".*\"|sha256 \"${{ env.SHA256 }}\"|" Formula/webtags.rb
+          sed -i "s|version \".*\"|version \"${{ needs.create-release.outputs.version }}\"|" Formula/webtags.rb
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+          commit-message: Update webtags to v${{ needs.create-release.outputs.version }}
+          branch: release-v${{ needs.create-release.outputs.version }}
+          title: Update webtags to v${{ needs.create-release.outputs.version }}
+          body: |
+            Automated formula update for webtags v${{ needs.create-release.outputs.version }}
+
+            - Source SHA256: ${{ env.SHA256 }}
+            - Release: https://github.com/adjmunro/webtags/releases/tag/v${{ needs.create-release.outputs.version }}
+
+# Workflow:
+# 1. Release workflow creates PR in homebrew-tap
+# 2. You review and merge the PR manually
+# 3. Most secure - requires human approval

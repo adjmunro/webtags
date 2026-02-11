@@ -1,0 +1,23 @@
+# Example: Using deploy key instead of PAT
+# More secure - key only works for homebrew-tap repository
+
+name: Release (with deploy key)
+
+# ... (same as before until checkout step)
+
+jobs:
+  update-homebrew:
+    # ...
+    steps:
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: adjmunro/homebrew-tap
+          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          path: homebrew-tap
+
+# Setup:
+# 1. Generate SSH key: ssh-keygen -t ed25519 -C "webtags-deploy-key" -f homebrew-deploy-key
+# 2. Add public key to homebrew-tap: Settings > Deploy keys > Add deploy key
+#    - Check "Allow write access"
+# 3. Add private key to webtags: Settings > Secrets > HOMEBREW_TAP_DEPLOY_KEY

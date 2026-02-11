@@ -103,6 +103,8 @@ jobs:
     name: Update Homebrew Formula
     needs: [create-release, build-release]
     runs-on: ubuntu-latest
+    # Requires HOMEBREW_TAP_TOKEN secret (fine-grained PAT with access to homebrew-tap repo)
+    # Setup instructions: docs/HOMEBREW_TOKEN_SETUP.md
     steps:
       - name: Checkout homebrew-tap
         uses: actions/checkout@v4
