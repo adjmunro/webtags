@@ -85,23 +85,44 @@ impl EncryptionManager {
     /// Store encryption key in macOS Keychain with Touch ID requirement
     #[cfg(target_os = "macos")]
     fn store_key_in_keychain(key: &[u8]) -> Result<()> {
+        use std::process::Command;
+        use std::io::Read;
+
         // Convert key to base64 for storage
         let key_b64 = BASE64.encode(key);
 
-        // Try to add to keychain
-        // Note: This is a simplified version. For full Touch ID integration,
-        // you'd need to use SecAccessControlCreateWithFlags with biometry flags
-        let keychain = SecKeychain::default()?;
+        // Delete existing key if present
+        let _ = Self::delete_key_from_keychain();
 
-        // Store as generic password
-        keychain.set_generic_password(
-            KEYCHAIN_SERVICE,
-            KEYCHAIN_ACCOUNT,
-            key_b64.as_bytes(),
-        )?;
+        // Use the `security` command-line tool to add the item with Touch ID requirement
+        // The -T "" flag means require authentication for all apps (prompts Touch ID)
+        let mut child = Command::new("security")
+            .args([
+                "add-generic-password",
+                "-a", KEYCHAIN_ACCOUNT,
+                "-s", KEYCHAIN_SERVICE,
+                "-w", &key_b64,
+                "-T", "", // Require authentication (Touch ID) for access
+                "-U", // Update if exists
+            ])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .context("Failed to spawn security command")?;
 
-        log::info!("Encryption key stored in Keychain");
-        Ok(())
+        let status = child.wait().context("Failed to wait for security command")?;
+
+        if status.success() {
+            log::info!("Encryption key stored in Keychain with Touch ID requirement");
+            Ok(())
+        } else {
+            let stderr = child.stderr.and_then(|mut s| {
+                let mut buf = String::new();
+                s.read_to_string(&mut buf).ok().map(|_| buf)
+            }).unwrap_or_default();
+            anyhow::bail!("Failed to store key in Keychain: {}", stderr)
+        }
     }
 
     #[cfg(not(target_os = "macos"))]
