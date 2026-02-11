@@ -7,16 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- CI/CD pipeline with GitHub Actions
-- Homebrew tap for easy installation on macOS
-- Development tooling with justfile
-- Worktree management scripts
-- CLAUDE.md/AGENTS.md symlinking support
-- Code coverage reporting
-- Multi-platform release automation
+## [0.1.1] - 2026-02-12
 
-## [0.1.0] - 2025-02-11
+### Fixed
+- Release workflow now uses fine-grained PAT for Homebrew formula updates
+- Homebrew formula SHA256 now correctly calculated from source archive
+- Release workflow properly scoped to prevent cross-repository permission issues
+
+### Changed
+- Automated Homebrew formula verification in CI pipeline
+- Improved security with fine-grained tokens (single-repo access only)
+
+### Added
+- Comprehensive Homebrew token setup documentation
+- Alternative workflow examples (deploy key, PR-based)
+
+## [0.1.0] - 2026-02-11
 
 ### Added
 - Native messaging host in Rust

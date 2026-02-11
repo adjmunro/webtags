@@ -1,6 +1,6 @@
 {
   "name": "webtags",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Git-synced browser bookmark tagging extension",
   "scripts": {
     "build": "webpack --mode production",

@@ -134,3 +134,48 @@ jobs:
           git add Formula/webtags.rb
           git commit -m "Update webtags to v${{ needs.create-release.outputs.version }}"
           git push
+
+  verify-homebrew:
+    name: Verify Homebrew Installation
+    needs: [create-release, update-homebrew]
+    runs-on: macos-latest
+    steps:
+      - name: Install from Homebrew
+        run: |
+          brew tap adjmunro/tap
+          brew install webtags
+
+      - name: Verify binary exists
+        run: |
+          which webtags-host
+          ls -lh $(which webtags-host)
+
+      - name: Test native messaging protocol
+        run: |
+          # Test that the binary responds to native messaging input
+          RESPONSE=$(python3 -c 'import json, struct, sys; msg = json.dumps({"type": "status"}); sys.stdout.buffer.write(struct.pack("I", len(msg)) + msg.encode())' | webtags-host 2>/dev/null | head -c 100)
+          echo "Response: $RESPONSE"
+          # Check that response contains expected success message
+          if echo "$RESPONSE" | grep -q '"type":"success"'; then
+            echo "✅ Native messaging protocol working correctly"
+          else
+            echo "❌ Native messaging protocol test failed"
+            exit 1
+          fi
+
+      - name: Verify version matches release
+        run: |
+          # Extract version from formula
+          FORMULA_VERSION=$(brew info webtags | head -n 1 | awk '{print $3}')
+          echo "Formula version: $FORMULA_VERSION"
+          echo "Expected version: ${{ needs.create-release.outputs.version }}"
+          if [ "$FORMULA_VERSION" = "${{ needs.create-release.outputs.version }}" ]; then
+            echo "✅ Version matches"
+          else
+            echo "❌ Version mismatch"
+            exit 1
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: brew uninstall webtags

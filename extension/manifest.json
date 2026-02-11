@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WebTags",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Git-synced browser bookmark tagging with hierarchical tags and cross-device sync",
   "permissions": [
     "bookmarks",
