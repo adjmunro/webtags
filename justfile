@@ -191,6 +191,10 @@ update:
     cd native-host && cargo update
     cd extension && npm update
 
+# Run security audit
+security-audit:
+    @./scripts/security-audit.sh
+
 # Run CI checks locally (same as CI pipeline)
 ci:
     @echo "Running CI checks..."
@@ -200,3 +204,13 @@ ci:
     just build
     @echo ""
     @echo "✓ All CI checks passed!"
+
+# Pre-push checks (CI + security audit)
+pre-push:
+    @echo "Running pre-push checks..."
+    @echo ""
+    just ci
+    @echo ""
+    just security-audit
+    @echo ""
+    @echo "✅ All pre-push checks passed! Safe to push."

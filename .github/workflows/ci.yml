@@ -54,8 +54,8 @@ jobs:
           path: native-host/target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-${{ github.sha }}
 
-      - name: Run Clippy
-        run: cd native-host && cargo clippy -- -D warnings
+      - name: Run Clippy (Maximum Strictness)
+        run: cd native-host && cargo clippy --all-targets --all-features -- -D warnings
 
   test:
     name: Tests

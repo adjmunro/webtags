@@ -23,10 +23,7 @@ fn validate_bookmark_url(url_str: &str) -> Result<()> {
     // Only allow safe schemes
     match parsed.scheme() {
         "http" | "https" => Ok(()),
-        scheme => anyhow::bail!(
-            "Unsafe URL scheme '{}'. Only http and https are allowed.",
-            scheme
-        ),
+        scheme => anyhow::bail!("Unsafe URL scheme '{scheme}'. Only http and https are allowed."),
     }
 }
 
@@ -111,7 +108,7 @@ pub struct ParentRelationship {
 }
 
 impl BookmarksData {
-    /// Create a new empty BookmarksData structure
+    /// Create a new empty `BookmarksData` structure
     pub fn new() -> Self {
         Self {
             jsonapi: JsonApiVersion {
@@ -129,7 +126,7 @@ impl BookmarksData {
                 self.data.push(bookmark);
                 Ok(())
             }
-            _ => anyhow::bail!("Expected bookmark resource"),
+            Resource::Tag { .. } => anyhow::bail!("Expected bookmark resource"),
         }
     }
 
@@ -145,7 +142,7 @@ impl BookmarksData {
                 }
                 Ok(())
             }
-            _ => anyhow::bail!("Expected tag resource"),
+            Resource::Bookmark { .. } => anyhow::bail!("Expected tag resource"),
         }
     }
 
@@ -205,7 +202,7 @@ impl BookmarksData {
         hierarchy
     }
 
-    /// Get breadcrumb path for a tag (e.g., ["tech", "programming", "rust"])
+    /// Get breadcrumb path for a tag (e.g., `["tech", "programming", "rust"]`)
     pub fn get_tag_breadcrumb(&self, tag_id: &str) -> Vec<String> {
         let mut breadcrumb = Vec::new();
         let tags_by_id: HashMap<String, &Resource> = self
@@ -288,18 +285,17 @@ impl BookmarksData {
                 }
             };
             if !ids.insert(id) {
-                anyhow::bail!("Duplicate resource ID: {}", id);
+                anyhow::bail!("Duplicate resource ID: {id}");
             }
         }
 
         if let Some(included) = &self.included {
             for resource in included {
                 let id = match resource {
-                    Resource::Bookmark { id, .. } => id,
-                    Resource::Tag { id, .. } => id,
+                    Resource::Bookmark { id, .. } | Resource::Tag { id, .. } => id,
                 };
                 if !ids.insert(id) {
-                    anyhow::bail!("Duplicate resource ID: {}", id);
+                    anyhow::bail!("Duplicate resource ID: {id}");
                 }
             }
         }

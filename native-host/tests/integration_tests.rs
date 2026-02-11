@@ -112,7 +112,7 @@ fn test_git_workflow_integration() {
     assert!(repo.is_clean().unwrap());
 
     // Modify file
-    fs::write(&test_file, r##"{"jsonapi":{"version":"1.1"},"data":[]}"##).unwrap();
+    fs::write(&test_file, r#"{"jsonapi":{"version":"1.1"},"data":[]}"#).unwrap();
 
     // Verify repository is dirty
     assert!(!repo.is_clean().unwrap());
@@ -259,7 +259,7 @@ fn test_native_messaging_protocol_integration() {
         repo_url: None,
     };
     let json = serde_json::to_vec(&init_msg).unwrap();
-    let length = (json.len() as u32).to_le_bytes();
+    let length = u32::try_from(json.len()).unwrap().to_le_bytes();
 
     let mut input = Vec::new();
     input.extend_from_slice(&length);

@@ -76,7 +76,7 @@ impl GitHubClient {
         if !response.status().is_success() {
             let status = response.status();
             // Don't include response body in error (may contain sensitive data)
-            anyhow::bail!("GitHub API error: {}", status);
+            anyhow::bail!("GitHub API error: {status}");
         }
 
         let device_code: DeviceCodeResponse = response
@@ -146,7 +146,7 @@ impl GitHubClient {
                     anyhow::bail!("User denied access");
                 }
                 Some(other) => {
-                    anyhow::bail!("OAuth error: {}", other);
+                    anyhow::bail!("OAuth error: {other}");
                 }
                 None => {
                     anyhow::bail!("Unexpected response from GitHub");
@@ -173,7 +173,7 @@ impl GitHubClient {
             .client
             .post("https://api.github.com/user/repos")
             .header("Accept", "application/vnd.github+json")
-            .header("Authorization", format!("Bearer {}", token))
+            .header("Authorization", format!("Bearer {token}"))
             .header("User-Agent", "WebTags")
             .json(&request)
             .send()
@@ -183,7 +183,7 @@ impl GitHubClient {
         if !response.status().is_success() {
             let status = response.status();
             // Don't include response body in error (may contain sensitive data)
-            anyhow::bail!("Failed to create repository: {}", status);
+            anyhow::bail!("Failed to create repository: {status}");
         }
 
         let repo: Repository = response
@@ -200,7 +200,7 @@ impl GitHubClient {
             .client
             .get("https://api.github.com/user")
             .header("Accept", "application/vnd.github+json")
-            .header("Authorization", format!("Bearer {}", token))
+            .header("Authorization", format!("Bearer {token}"))
             .header("User-Agent", "WebTags")
             .send()
             .await

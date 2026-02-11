@@ -66,7 +66,7 @@ pub fn read_message<R: Read>(mut reader: R) -> Result<Message> {
 
     // Validate length (max 1MB for safety)
     if length > 1_000_000 {
-        anyhow::bail!("Message too large: {} bytes", length);
+        anyhow::bail!("Message too large: {length} bytes");
     }
 
     // Read JSON message
@@ -87,7 +87,7 @@ pub fn read_message<R: Read>(mut reader: R) -> Result<Message> {
 pub fn write_response<W: Write>(mut writer: W, response: &Response) -> Result<()> {
     // Serialize response to JSON
     let json = serde_json::to_vec(response).context("Failed to serialize response")?;
-    let length = json.len() as u32;
+    let length = u32::try_from(json.len()).context("Response too large")?;
 
     // Write length prefix
     writer
@@ -104,7 +104,7 @@ pub fn write_response<W: Write>(mut writer: W, response: &Response) -> Result<()
     Ok(())
 }
 
-/// Async version of read_message for use in async contexts
+/// Async version of `read_message` for use in async contexts
 pub async fn read_message_async<R: AsyncReadExt + Unpin>(mut reader: R) -> Result<Message> {
     // Read 4-byte length prefix
     let mut length_bytes = [0u8; 4];
@@ -116,7 +116,7 @@ pub async fn read_message_async<R: AsyncReadExt + Unpin>(mut reader: R) -> Resul
 
     // Validate length
     if length > 1_000_000 {
-        anyhow::bail!("Message too large: {} bytes", length);
+        anyhow::bail!("Message too large: {length} bytes");
     }
 
     // Read JSON message
@@ -133,14 +133,14 @@ pub async fn read_message_async<R: AsyncReadExt + Unpin>(mut reader: R) -> Resul
     Ok(message)
 }
 
-/// Async version of write_response for use in async contexts
+/// Async version of `write_response` for use in async contexts
 pub async fn write_response_async<W: AsyncWriteExt + Unpin>(
     mut writer: W,
     response: &Response,
 ) -> Result<()> {
     // Serialize response to JSON
     let json = serde_json::to_vec(response).context("Failed to serialize response")?;
-    let length = json.len() as u32;
+    let length = u32::try_from(json.len()).context("Response too large")?;
 
     // Write length prefix
     writer
@@ -171,7 +171,7 @@ mod tests {
             repo_url: None,
         };
         let json = serde_json::to_vec(&message).unwrap();
-        let length = (json.len() as u32).to_le_bytes();
+        let length = u32::try_from(json.len()).unwrap().to_le_bytes();
 
         let mut input = Vec::new();
         input.extend_from_slice(&length);
@@ -188,7 +188,7 @@ mod tests {
         let data = serde_json::json!({"bookmarks": []});
         let message = Message::Write { data: data.clone() };
         let json = serde_json::to_vec(&message).unwrap();
-        let length = (json.len() as u32).to_le_bytes();
+        let length = u32::try_from(json.len()).unwrap().to_le_bytes();
 
         let mut input = Vec::new();
         input.extend_from_slice(&length);
@@ -207,7 +207,7 @@ mod tests {
             token: None,
         };
         let json = serde_json::to_vec(&message).unwrap();
-        let length = (json.len() as u32).to_le_bytes();
+        let length = u32::try_from(json.len()).unwrap().to_le_bytes();
 
         let mut input = Vec::new();
         input.extend_from_slice(&length);
@@ -226,7 +226,7 @@ mod tests {
             token: Some("ghp_test123".to_string()),
         };
         let json = serde_json::to_vec(&message).unwrap();
-        let length = (json.len() as u32).to_le_bytes();
+        let length = u32::try_from(json.len()).unwrap().to_le_bytes();
 
         let mut input = Vec::new();
         input.extend_from_slice(&length);
@@ -252,7 +252,7 @@ mod tests {
     #[test]
     fn test_read_message_invalid_json() {
         let invalid_json = b"not valid json";
-        let length = (invalid_json.len() as u32).to_le_bytes();
+        let length = u32::try_from(invalid_json.len()).unwrap().to_le_bytes();
 
         let mut input = Vec::new();
         input.extend_from_slice(&length);
@@ -321,7 +321,7 @@ mod tests {
         // Test that we can write a response and read it back as a message
         let original = Message::Status;
         let json = serde_json::to_vec(&original).unwrap();
-        let length = (json.len() as u32).to_le_bytes();
+        let length = u32::try_from(json.len()).unwrap().to_le_bytes();
 
         let mut buffer = Vec::new();
         buffer.extend_from_slice(&length);

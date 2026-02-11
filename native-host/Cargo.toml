@@ -71,6 +71,30 @@ tempfile = "3.8"
 mockall = "0.12"
 wiremock = "0.6"
 
+# Lint configuration - maximum strictness for production code
+[lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[lints.clippy]
+# Pedantic lints - best practices
+pedantic = { level = "warn", priority = -1 }
+
+# High-value restriction lints
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+# Note: unwrap_used/expect_used are too strict for tests, handle in CI
+
+# Allow some pedantic lints that create noise
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+similar_names = "allow"
+too_many_lines = "allow"
+unused_async = "allow"  # Handlers have uniform async signatures
+
 [profile.release]
 opt-level = 3
 lto = true

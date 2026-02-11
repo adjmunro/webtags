@@ -97,25 +97,25 @@ async fn main() {
     loop {
         match messaging::read_message(stdin()) {
             Ok(message) => {
-                info!("Received message: {:?}", message);
+                info!("Received message: {message:?}");
 
                 let response = handle_message(message, &mut config).await;
 
                 if let Err(e) = messaging::write_response(stdout(), &response) {
-                    error!("Failed to write response: {}", e);
+                    error!("Failed to write response: {e}");
                     break;
                 }
             }
             Err(e) => {
-                error!("Failed to read message: {}", e);
+                error!("Failed to read message: {e}");
 
                 let error_response = Response::Error {
-                    message: format!("Failed to read message: {}", e),
+                    message: format!("Failed to read message: {e}"),
                     code: Some("ERR_READ_MESSAGE".to_string()),
                 };
 
                 if let Err(e) = messaging::write_response(stdout(), &error_response) {
-                    error!("Failed to write error response: {}", e);
+                    error!("Failed to write error response: {e}");
                 }
                 break;
             }
@@ -150,16 +150,14 @@ async fn handle_init(
     info!("Initializing repository");
 
     // Determine repo path (use provided or default)
-    let requested_path = repo_path
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("default-repo"));
+    let requested_path = repo_path.map_or_else(|| PathBuf::from("default-repo"), PathBuf::from);
 
     // Validate the path for security
     let path = match validate_repo_path(&requested_path) {
         Ok(p) => p,
         Err(e) => {
             return Response::Error {
-                message: format!("Invalid repository path: {}", e),
+                message: format!("Invalid repository path: {e}"),
                 code: Some("ERR_INVALID_PATH".to_string()),
             }
         }
@@ -167,23 +165,23 @@ async fn handle_init(
 
     // Clone or init repository
     let repo = if let Some(url) = repo_url {
-        info!("Cloning repository from {}", url);
+        info!("Cloning repository from {url}");
         match git::GitRepo::clone(&url, &path) {
             Ok(repo) => repo,
             Err(e) => {
                 return Response::Error {
-                    message: format!("Failed to clone repository: {}", e),
+                    message: format!("Failed to clone repository: {e}"),
                     code: Some("ERR_CLONE".to_string()),
                 }
             }
         }
     } else {
-        info!("Initializing local repository at {:?}", path);
+        info!("Initializing local repository at {}", path.display());
         match git::GitRepo::init(&path) {
             Ok(repo) => repo,
             Err(e) => {
                 return Response::Error {
-                    message: format!("Failed to initialize repository: {}", e),
+                    message: format!("Failed to initialize repository: {e}"),
                     code: Some("ERR_INIT".to_string()),
                 }
             }
@@ -193,7 +191,7 @@ async fn handle_init(
     config.repo_path = Some(repo.path().to_path_buf());
 
     Response::Success {
-        message: format!("Repository initialized at {:?}", repo.path()),
+        message: format!("Repository initialized at {}", repo.path().display()),
         data: None,
     }
 }
@@ -216,7 +214,7 @@ async fn handle_write(config: &mut HostConfig, data: serde_json::Value) -> Respo
         Ok(data) => data,
         Err(e) => {
             return Response::Error {
-                message: format!("Failed to parse bookmarks data: {}", e),
+                message: format!("Failed to parse bookmarks data: {e}"),
                 code: Some("ERR_PARSE".to_string()),
             }
         }
@@ -225,7 +223,7 @@ async fn handle_write(config: &mut HostConfig, data: serde_json::Value) -> Respo
     // Validate data
     if let Err(e) = bookmarks_data.validate() {
         return Response::Error {
-            message: format!("Invalid bookmarks data: {}", e),
+            message: format!("Invalid bookmarks data: {e}"),
             code: Some("ERR_VALIDATE".to_string()),
         };
     }
@@ -238,7 +236,7 @@ async fn handle_write(config: &mut HostConfig, data: serde_json::Value) -> Respo
         config.encryption_enabled,
     ) {
         return Response::Error {
-            message: format!("Failed to write bookmarks file: {}", e),
+            message: format!("Failed to write bookmarks file: {e}"),
             code: Some("ERR_WRITE_FILE".to_string()),
         };
     }
@@ -248,7 +246,7 @@ async fn handle_write(config: &mut HostConfig, data: serde_json::Value) -> Respo
         Ok(repo) => repo,
         Err(e) => {
             return Response::Error {
-                message: format!("Failed to open repository: {}", e),
+                message: format!("Failed to open repository: {e}"),
                 code: Some("ERR_OPEN_REPO".to_string()),
             }
         }
@@ -257,7 +255,7 @@ async fn handle_write(config: &mut HostConfig, data: serde_json::Value) -> Respo
     // Add and commit
     if let Err(e) = repo.add_file("bookmarks.json") {
         return Response::Error {
-            message: format!("Failed to stage file: {}", e),
+            message: format!("Failed to stage file: {e}"),
             code: Some("ERR_GIT_ADD".to_string()),
         };
     }
@@ -270,7 +268,7 @@ async fn handle_write(config: &mut HostConfig, data: serde_json::Value) -> Respo
 
     if let Err(e) = repo.commit(&commit_message) {
         return Response::Error {
-            message: format!("Failed to commit: {}", e),
+            message: format!("Failed to commit: {e}"),
             code: Some("ERR_GIT_COMMIT".to_string()),
         };
     }
@@ -279,7 +277,7 @@ async fn handle_write(config: &mut HostConfig, data: serde_json::Value) -> Respo
     if repo.has_remote("origin") {
         if let Err(e) = repo.push("origin", "main") {
             return Response::Error {
-                message: format!("Failed to push: {}", e),
+                message: format!("Failed to push: {e}"),
                 code: Some("ERR_GIT_PUSH".to_string()),
             };
         }
@@ -314,7 +312,7 @@ async fn handle_read(config: &mut HostConfig) -> Response {
             Ok(v) => v,
             Err(e) => {
                 return Response::Error {
-                    message: format!("Failed to serialize empty data: {}", e),
+                    message: format!("Failed to serialize empty data: {e}"),
                     code: Some("ERR_SERIALIZE".to_string()),
                 }
             }
@@ -331,7 +329,7 @@ async fn handle_read(config: &mut HostConfig) -> Response {
             Ok(data) => data,
             Err(e) => {
                 return Response::Error {
-                    message: format!("Failed to read bookmarks file: {}", e),
+                    message: format!("Failed to read bookmarks file: {e}"),
                     code: Some("ERR_READ_FILE".to_string()),
                 }
             }
@@ -341,7 +339,7 @@ async fn handle_read(config: &mut HostConfig) -> Response {
         Ok(v) => v,
         Err(e) => {
             return Response::Error {
-                message: format!("Failed to serialize bookmarks data: {}", e),
+                message: format!("Failed to serialize bookmarks data: {e}"),
                 code: Some("ERR_SERIALIZE".to_string()),
             }
         }
@@ -370,7 +368,7 @@ async fn handle_sync(config: &mut HostConfig) -> Response {
         Ok(repo) => repo,
         Err(e) => {
             return Response::Error {
-                message: format!("Failed to open repository: {}", e),
+                message: format!("Failed to open repository: {e}"),
                 code: Some("ERR_OPEN_REPO".to_string()),
             }
         }
@@ -386,7 +384,7 @@ async fn handle_sync(config: &mut HostConfig) -> Response {
     // Pull from remote
     if let Err(e) = repo.pull("origin", "main") {
         return Response::Error {
-            message: format!("Failed to pull: {}", e),
+            message: format!("Failed to pull: {e}"),
             code: Some("ERR_GIT_PULL".to_string()),
         };
     }
@@ -398,7 +396,7 @@ async fn handle_sync(config: &mut HostConfig) -> Response {
 }
 
 async fn handle_auth(method: messaging::AuthMethod, token: Option<String>) -> Response {
-    info!("Handling authentication: {:?}", method);
+    info!("Handling authentication: {method:?}");
 
     match method {
         messaging::AuthMethod::OAuth => {
@@ -409,7 +407,7 @@ async fn handle_auth(method: messaging::AuthMethod, token: Option<String>) -> Re
                 Ok(response) => response,
                 Err(e) => {
                     return Response::Error {
-                        message: format!("Failed to start OAuth flow: {}", e),
+                        message: format!("Failed to start OAuth flow: {e}"),
                         code: Some("ERR_OAUTH_START".to_string()),
                     }
                 }
@@ -424,14 +422,11 @@ async fn handle_auth(method: messaging::AuthMethod, token: Option<String>) -> Re
         }
         messaging::AuthMethod::PAT => {
             // Store provided PAT
-            let token = match token {
-                Some(t) => t,
-                None => {
-                    return Response::Error {
-                        message: "No token provided".to_string(),
-                        code: Some("ERR_NO_TOKEN".to_string()),
-                    }
-                }
+            let Some(token) = token else {
+                return Response::Error {
+                    message: "No token provided".to_string(),
+                    code: Some("ERR_NO_TOKEN".to_string()),
+                };
             };
 
             // Validate token
@@ -441,7 +436,7 @@ async fn handle_auth(method: messaging::AuthMethod, token: Option<String>) -> Re
                     // Store in keychain
                     if let Err(e) = github::store_token(&token) {
                         return Response::Error {
-                            message: format!("Failed to store token: {}", e),
+                            message: format!("Failed to store token: {e}"),
                             code: Some("ERR_STORE_TOKEN".to_string()),
                         };
                     }
@@ -456,7 +451,7 @@ async fn handle_auth(method: messaging::AuthMethod, token: Option<String>) -> Re
                     code: Some("ERR_INVALID_TOKEN".to_string()),
                 },
                 Err(e) => Response::Error {
-                    message: format!("Failed to validate token: {}", e),
+                    message: format!("Failed to validate token: {e}"),
                     code: Some("ERR_VALIDATE_TOKEN".to_string()),
                 },
             }
@@ -467,23 +462,20 @@ async fn handle_auth(method: messaging::AuthMethod, token: Option<String>) -> Re
 async fn handle_status(config: &HostConfig) -> Response {
     info!("Getting status");
 
-    let repo_path = match config.repo_path.as_ref() {
-        Some(path) => path,
-        None => {
-            return Response::Success {
-                message: "Not initialized".to_string(),
-                data: Some(serde_json::json!({
-                    "initialized": false,
-                })),
-            }
-        }
+    let Some(repo_path) = config.repo_path.as_ref() else {
+        return Response::Success {
+            message: "Not initialized".to_string(),
+            data: Some(serde_json::json!({
+                "initialized": false,
+            })),
+        };
     };
 
     let repo = match git::GitRepo::init(repo_path) {
         Ok(repo) => repo,
         Err(e) => {
             return Response::Error {
-                message: format!("Failed to open repository: {}", e),
+                message: format!("Failed to open repository: {e}"),
                 code: Some("ERR_OPEN_REPO".to_string()),
             }
         }
@@ -526,7 +518,7 @@ async fn handle_enable_encryption(config: &mut HostConfig) -> Response {
         // Generate and store encryption key
         if let Err(e) = EncryptionManager::generate_and_store_key() {
             return Response::Error {
-                message: format!("Failed to generate encryption key: {}", e),
+                message: format!("Failed to generate encryption key: {e}"),
                 code: Some("ERR_KEYGEN".to_string()),
             };
         }
@@ -557,7 +549,7 @@ async fn handle_enable_encryption(config: &mut HostConfig) -> Response {
                         Ok(data) => data,
                         Err(e) => {
                             return Response::Error {
-                                message: format!("Failed to read bookmarks for encryption: {}", e),
+                                message: format!("Failed to read bookmarks for encryption: {e}"),
                                 code: Some("ERR_READ_FOR_ENCRYPT".to_string()),
                             };
                         }
@@ -570,7 +562,7 @@ async fn handle_enable_encryption(config: &mut HostConfig) -> Response {
                         true,
                     ) {
                         return Response::Error {
-                            message: format!("Failed to encrypt bookmarks: {}", e),
+                            message: format!("Failed to encrypt bookmarks: {e}"),
                             code: Some("ERR_ENCRYPT".to_string()),
                         };
                     }
@@ -579,7 +571,7 @@ async fn handle_enable_encryption(config: &mut HostConfig) -> Response {
                 }
                 Err(e) => {
                     return Response::Error {
-                        message: format!("Failed to check encryption status: {}", e),
+                        message: format!("Failed to check encryption status: {e}"),
                         code: Some("ERR_CHECK_ENCRYPTION".to_string()),
                     };
                 }
@@ -638,7 +630,7 @@ async fn handle_disable_encryption(config: &mut HostConfig) -> Response {
                             Ok(data) => data,
                             Err(e) => {
                                 return Response::Error {
-                                    message: format!("Failed to decrypt bookmarks: {}", e),
+                                    message: format!("Failed to decrypt bookmarks: {e}"),
                                     code: Some("ERR_DECRYPT".to_string()),
                                 };
                             }
@@ -647,7 +639,7 @@ async fn handle_disable_encryption(config: &mut HostConfig) -> Response {
                     // Write plain text version
                     if let Err(e) = storage::write_to_file(&bookmarks_file, &bookmarks_data) {
                         return Response::Error {
-                            message: format!("Failed to write decrypted bookmarks: {}", e),
+                            message: format!("Failed to write decrypted bookmarks: {e}"),
                             code: Some("ERR_WRITE_DECRYPT".to_string()),
                         };
                     }
@@ -660,7 +652,7 @@ async fn handle_disable_encryption(config: &mut HostConfig) -> Response {
                 }
                 Err(e) => {
                     return Response::Error {
-                        message: format!("Failed to check encryption status: {}", e),
+                        message: format!("Failed to check encryption status: {e}"),
                         code: Some("ERR_CHECK_ENCRYPTION".to_string()),
                     };
                 }
@@ -669,7 +661,7 @@ async fn handle_disable_encryption(config: &mut HostConfig) -> Response {
 
         // Delete encryption key from Keychain
         if let Err(e) = EncryptionManager::delete_key_from_keychain() {
-            log::warn!("Failed to delete encryption key: {}", e);
+            log::warn!("Failed to delete encryption key: {e}");
             // Don't fail the operation, just log
         }
 

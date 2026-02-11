@@ -1,7 +1,7 @@
 use webtags_host::encryption::EncryptionManager;
 
 #[test]
-#[ignore] // Only run manually with: cargo test --test test_touchid -- --ignored
+#[ignore = "Only run manually with: cargo test --test test_touchid -- --ignored"]
 fn test_touch_id_integration() {
     // This test will trigger a Touch ID prompt on macOS
     println!("\n🔐 Testing Touch ID integration...");
@@ -9,12 +9,12 @@ fn test_touch_id_integration() {
 
     // Generate and store a key (will trigger Touch ID prompt)
     match EncryptionManager::generate_and_store_key() {
-        Ok(_) => {
+        Ok(()) => {
             println!("✅ Successfully stored encryption key with Touch ID");
             println!("   Check: Did you see a Touch ID prompt?");
         }
         Err(e) => {
-            println!("❌ Failed to store key: {}", e);
+            println!("❌ Failed to store key: {e}");
             panic!("Touch ID test failed");
         }
     }
@@ -37,13 +37,13 @@ fn test_touch_id_integration() {
                     println!("   Data matches! Touch ID is working correctly! 🎉");
                 }
                 Err(e) => {
-                    println!("❌ Failed to decrypt: {}", e);
+                    println!("❌ Failed to decrypt: {e}");
                     panic!("Decryption failed");
                 }
             }
         }
         Err(e) => {
-            println!("❌ Failed to encrypt: {}", e);
+            println!("❌ Failed to encrypt: {e}");
             panic!("Encryption failed");
         }
     }

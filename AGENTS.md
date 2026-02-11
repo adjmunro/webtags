@@ -54,8 +54,21 @@ just ci
 
 ## For AI Agents
 
+**CRITICAL**: Before ANY `git push`:
+```bash
+just pre-push
+```
+
+This runs:
+- All CI checks (format, lint, test, build)
+- Security audit (secrets, vulnerabilities, unsafe code)
+
 When working on this project:
-1. **Always read relevant docs** before making changes
-2. **Run tests** after code modifications
-3. **Follow existing patterns** in the codebase
-4. **Ask for clarification** on architectural decisions before major changes
+1. **Run pre-push checks** before every push
+2. **Read relevant docs** before making changes
+3. **Run tests** after code modifications
+4. **Follow existing patterns** in the codebase
+5. **Never push** without passing all checks
+6. **Security first** - audit before every push
+
+See [Pre-Push Workflow](docs/workflows/PRE_PUSH.md) for details.

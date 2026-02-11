@@ -29,7 +29,7 @@ pub struct EncryptedData {
 }
 
 mod base64_serde {
-    use super::*;
+    use super::{Engine, Result, BASE64};
     use serde::{Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
@@ -130,7 +130,7 @@ impl EncryptionManager {
                     s.read_to_string(&mut buf).ok().map(|_| buf)
                 })
                 .unwrap_or_default();
-            anyhow::bail!("Failed to store key in Keychain: {}", stderr)
+            anyhow::bail!("Failed to store key in Keychain: {stderr}")
         }
     }
 
@@ -197,7 +197,7 @@ impl EncryptionManager {
 
         // Create cipher
         let cipher = Aes256Gcm::new_from_slice(&key_bytes)
-            .map_err(|e| anyhow::anyhow!("Failed to create cipher: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create cipher: {e:?}"))?;
 
         // Generate random nonce
         let mut nonce_bytes = [0u8; NONCE_SIZE];
@@ -207,7 +207,7 @@ impl EncryptionManager {
         // Encrypt
         let ciphertext = cipher
             .encrypt(nonce, plaintext)
-            .map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Encryption failed: {e}"))?;
 
         Ok(EncryptedData {
             version: "1".to_string(),
@@ -233,7 +233,7 @@ impl EncryptionManager {
 
         // Create cipher
         let cipher = Aes256Gcm::new_from_slice(&key_bytes)
-            .map_err(|e| anyhow::anyhow!("Failed to create cipher: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create cipher: {e:?}"))?;
 
         // Get nonce
         if encrypted.nonce.len() != NONCE_SIZE {
@@ -244,7 +244,7 @@ impl EncryptionManager {
         // Decrypt
         let plaintext = cipher
             .decrypt(nonce, encrypted.ciphertext.as_ref())
-            .map_err(|e| anyhow::anyhow!("Decryption failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Decryption failed: {e}"))?;
 
         Ok(plaintext)
     }

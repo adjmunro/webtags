@@ -143,7 +143,7 @@ impl GitRepo {
         let mut push_options = PushOptions::new();
         push_options.remote_callbacks(callbacks);
 
-        let refspec = format!("refs/heads/{}:refs/heads/{}", branch, branch);
+        let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
         remote
             .push(&[&refspec], Some(&mut push_options))
             .context("Failed to push to remote")?;
@@ -188,7 +188,7 @@ impl GitRepo {
             return Ok(());
         } else if analysis.0.is_fast_forward() {
             // Fast-forward merge
-            let refname = format!("refs/heads/{}", branch);
+            let refname = format!("refs/heads/{branch}");
             let mut reference = self.repo.find_reference(&refname)?;
             reference.set_target(fetch_commit.id(), "Fast-forward")?;
             self.repo.set_head(&refname)?;
@@ -232,7 +232,7 @@ impl GitRepo {
                 Some("HEAD"),
                 &signature,
                 &signature,
-                &format!("Merge from {}/{}", remote_name, branch),
+                &format!("Merge from {remote_name}/{branch}"),
                 &tree,
                 &[&head_commit, &fetch_commit_obj],
             )?;
