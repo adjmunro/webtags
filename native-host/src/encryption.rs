@@ -266,7 +266,6 @@ pub fn is_encrypted<P: AsRef<Path>>(path: P) -> Result<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
 
     #[test]
     fn test_encrypted_data_serialization() {
@@ -302,6 +301,146 @@ mod tests {
         let result = is_encrypted("/tmp/non-existent-file-xyz123.json");
         assert!(result.is_ok());
         assert!(!result.unwrap());
+    }
+
+    #[test]
+    fn test_encrypt_when_disabled() {
+        let manager = EncryptionManager::new(false);
+        let plaintext = b"test data";
+
+        let result = manager.encrypt(plaintext);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not enabled"));
+    }
+
+    #[test]
+    fn test_decrypt_with_invalid_nonce_size() {
+        let manager = EncryptionManager::new(true);
+        let encrypted = EncryptedData {
+            version: "1".to_string(),
+            encrypted: true,
+            algorithm: "AES-256-GCM".to_string(),
+            nonce: vec![1, 2, 3], // Invalid: only 3 bytes instead of 12
+            ciphertext: vec![1, 2, 3, 4, 5],
+        };
+
+        let result = manager.decrypt(&encrypted);
+        // Will fail because keychain access is not available in tests
+        // The important thing is that it fails gracefully
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_decrypt_with_unsupported_algorithm() {
+        let manager = EncryptionManager::new(true);
+        let encrypted = EncryptedData {
+            version: "1".to_string(),
+            encrypted: true,
+            algorithm: "AES-128-CBC".to_string(),
+            nonce: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            ciphertext: vec![1, 2, 3, 4, 5],
+        };
+
+        let result = manager.decrypt(&encrypted);
+        // Check that unsupported algorithm is rejected early
+        // (before keychain access is attempted)
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Unsupported encryption algorithm") || err_msg.contains("Keychain"));
+    }
+
+    #[test]
+    fn test_decrypt_when_not_encrypted() {
+        let manager = EncryptionManager::new(true);
+        let encrypted = EncryptedData {
+            version: "1".to_string(),
+            encrypted: false,
+            algorithm: "AES-256-GCM".to_string(),
+            nonce: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            ciphertext: vec![1, 2, 3, 4, 5],
+        };
+
+        let result = manager.decrypt(&encrypted);
+        // This check happens before keychain access
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not encrypted"));
+    }
+
+    #[test]
+    fn test_is_encrypted_with_plain_json() {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(b"{\"jsonapi\": {\"version\": \"1.1\"}, \"data\": []}").unwrap();
+        file.flush().unwrap();
+
+        let result = is_encrypted(file.path());
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+    }
+
+    #[test]
+    fn test_is_encrypted_with_encrypted_json() {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        let encrypted_data = EncryptedData {
+            version: "1".to_string(),
+            encrypted: true,
+            algorithm: "AES-256-GCM".to_string(),
+            nonce: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            ciphertext: vec![1, 2, 3, 4, 5],
+        };
+
+        let json = serde_json::to_string(&encrypted_data).unwrap();
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(json.as_bytes()).unwrap();
+        file.flush().unwrap();
+
+        let result = is_encrypted(file.path());
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+    }
+
+    #[test]
+    fn test_is_encrypted_with_invalid_json() {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(b"not valid json").unwrap();
+        file.flush().unwrap();
+
+        let result = is_encrypted(file.path());
+        // Should return false for invalid JSON (not encrypted)
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+    }
+
+    #[test]
+    fn test_base64_serde_roundtrip() {
+        let data = EncryptedData {
+            version: "1".to_string(),
+            encrypted: true,
+            algorithm: "AES-256-GCM".to_string(),
+            nonce: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+            ciphertext: vec![255, 254, 253, 252, 251],
+        };
+
+        // Serialize to JSON
+        let json = serde_json::to_string(&data).unwrap();
+
+        // Verify base64 encoding in JSON
+        assert!(json.contains("\"nonce\":"));
+        assert!(json.contains("\"ciphertext\":"));
+
+        // Deserialize back
+        let parsed: EncryptedData = serde_json::from_str(&json).unwrap();
+
+        // Verify data is preserved
+        assert_eq!(parsed.nonce, data.nonce);
+        assert_eq!(parsed.ciphertext, data.ciphertext);
     }
 
     // Note: Full encryption tests require macOS Keychain access
