@@ -47,6 +47,11 @@ const elements = {
   repoStatus: document.getElementById('repo-status')!,
   reauthGithubBtn: document.getElementById('reauth-github-btn')!,
 
+  encryptionToggle: document.getElementById('encryption-toggle') as HTMLInputElement,
+  encryptionStatusValue: document.getElementById('encryption-status-value')!,
+  encryptionControls: document.getElementById('encryption-controls')!,
+  encryptionNotSupported: document.getElementById('encryption-not-supported')!,
+
   createTagBtn: document.getElementById('create-tag-btn')!,
 };
 
@@ -327,8 +332,80 @@ async function updateSettingsView(): Promise<void> {
   try {
     const response = await chrome.runtime.sendMessage({ type: 'getState' });
     extensionState = response;
+
+    // Update encryption status
+    await updateEncryptionStatus();
   } catch (error) {
     console.error('Failed to get state:', error);
+  }
+}
+
+/**
+ * Update encryption status in settings view
+ */
+async function updateEncryptionStatus(): Promise<void> {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'encryptionStatus' });
+
+    if (response.type === 'success' && response.data) {
+      const { enabled, supported } = response.data;
+
+      // Show/hide UI based on platform support
+      if (!supported) {
+        elements.encryptionControls.classList.add('hidden');
+        elements.encryptionNotSupported.classList.remove('hidden');
+        return;
+      }
+
+      elements.encryptionControls.classList.remove('hidden');
+      elements.encryptionNotSupported.classList.add('hidden');
+
+      // Update toggle state
+      elements.encryptionToggle.checked = enabled;
+      elements.encryptionToggle.disabled = false;
+
+      // Update status text
+      elements.encryptionStatusValue.textContent = enabled ? 'Enabled' : 'Disabled';
+
+      // Update extension state
+      if (extensionState) {
+        extensionState.encryptionEnabled = enabled;
+        extensionState.encryptionSupported = supported;
+      }
+    } else {
+      elements.encryptionStatusValue.textContent = 'Unknown';
+    }
+  } catch (error) {
+    console.error('Failed to check encryption status:', error);
+    elements.encryptionStatusValue.textContent = 'Error';
+  }
+}
+
+/**
+ * Toggle encryption
+ */
+async function toggleEncryption(enable: boolean): Promise<void> {
+  try {
+    elements.encryptionToggle.disabled = true;
+    elements.encryptionStatusValue.textContent = enable ? 'Enabling...' : 'Disabling...';
+
+    const messageType = enable ? 'enableEncryption' : 'disableEncryption';
+    const response = await chrome.runtime.sendMessage({ type: messageType });
+
+    if (response.type === 'success') {
+      showStatus(response.message, 'success');
+      await updateEncryptionStatus();
+    } else {
+      showStatus(response.message, 'error');
+      // Revert toggle state on error
+      elements.encryptionToggle.checked = !enable;
+      elements.encryptionToggle.disabled = false;
+    }
+  } catch (error) {
+    console.error('Failed to toggle encryption:', error);
+    showStatus('Failed to toggle encryption', 'error');
+    elements.encryptionToggle.checked = !enable;
+    elements.encryptionToggle.disabled = false;
   }
 }
 
@@ -356,6 +433,11 @@ elements.authGithubBtn.addEventListener('click', initWithGithub);
 elements.cloneRepoBtn.addEventListener('click', cloneRepository);
 
 elements.backToMainBtn.addEventListener('click', () => switchView('main'));
+
+elements.encryptionToggle.addEventListener('change', (e) => {
+  const enabled = (e.target as HTMLInputElement).checked;
+  toggleEncryption(enabled);
+});
 
 elements.searchInput.addEventListener('input', (e) => {
   const query = (e.target as HTMLInputElement).value.toLowerCase();

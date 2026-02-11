@@ -227,6 +227,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Async response
   }
 
+  if (message.type === 'enableEncryption') {
+    nativeClient.sendMessage({ type: 'enableencryption' }).then((response) => {
+      if (response.type === 'success') {
+        state.encryptionEnabled = true;
+      }
+      sendResponse(response);
+    }).catch((error) => {
+      sendResponse({ type: 'error', message: error.message });
+    });
+    return true; // Async response
+  }
+
+  if (message.type === 'disableEncryption') {
+    nativeClient.sendMessage({ type: 'disableencryption' }).then((response) => {
+      if (response.type === 'success') {
+        state.encryptionEnabled = false;
+      }
+      sendResponse(response);
+    }).catch((error) => {
+      sendResponse({ type: 'error', message: error.message });
+    });
+    return true; // Async response
+  }
+
+  if (message.type === 'encryptionStatus') {
+    nativeClient.sendMessage({ type: 'encryptionstatus' }).then((response) => {
+      if (response.type === 'success' && response.data) {
+        state.encryptionEnabled = response.data.enabled;
+        state.encryptionSupported = response.data.supported;
+      }
+      sendResponse(response);
+    }).catch((error) => {
+      sendResponse({ type: 'error', message: error.message });
+    });
+    return true; // Async response
+  }
+
   return false;
 });
 

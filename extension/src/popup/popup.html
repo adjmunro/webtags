@@ -123,6 +123,31 @@
           <button id="reauth-github-btn" class="btn btn-secondary">Re-authenticate</button>
         </div>
       </div>
+
+      <div class="settings-section">
+        <h3>Encryption</h3>
+        <div id="encryption-not-supported" class="settings-item hidden">
+          <p class="warning-text">⚠️ Encryption is only supported on macOS</p>
+        </div>
+        <div id="encryption-controls" class="settings-item">
+          <div class="settings-row">
+            <label>Encrypt bookmarks with Touch ID:</label>
+            <div class="toggle-container">
+              <label class="toggle-switch">
+                <input type="checkbox" id="encryption-toggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <p class="settings-description">
+            When enabled, your bookmarks will be encrypted using AES-256-GCM.
+            You'll need to authenticate with Touch ID to access them.
+          </p>
+          <div id="encryption-status-text" class="settings-status">
+            Status: <span id="encryption-status-value">Checking...</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

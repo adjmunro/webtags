@@ -73,7 +73,10 @@ export type NativeMessage =
   | ReadMessage
   | SyncMessage
   | AuthMessage
-  | StatusMessage;
+  | StatusMessage
+  | EnableEncryptionMessage
+  | DisableEncryptionMessage
+  | EncryptionStatusMessage;
 
 export interface InitMessage {
   type: 'init';
@@ -102,6 +105,18 @@ export interface AuthMessage {
 
 export interface StatusMessage {
   type: 'status';
+}
+
+export interface EnableEncryptionMessage {
+  type: 'enableencryption';
+}
+
+export interface DisableEncryptionMessage {
+  type: 'disableencryption';
+}
+
+export interface EncryptionStatusMessage {
+  type: 'encryptionstatus';
 }
 
 export type NativeResponse = SuccessResponse | ErrorResponse | AuthFlowResponse;
@@ -145,6 +160,8 @@ export interface ExtensionState {
   syncing: boolean;
   lastSyncTime?: number;
   error?: string;
+  encryptionEnabled?: boolean;
+  encryptionSupported?: boolean;
 }
 
 // Tag hierarchy helper types
