@@ -165,14 +165,16 @@ jobs:
 
       - name: Verify version matches release
         run: |
-          # Extract version from formula
-          FORMULA_VERSION=$(brew info webtags | head -n 1 | awk '{print $3}')
-          echo "Formula version: $FORMULA_VERSION"
+          # Extract version from installed formula
+          INSTALLED_VERSION=$(brew list --versions webtags | awk '{print $2}')
+          echo "Installed version: $INSTALLED_VERSION"
           echo "Expected version: ${{ needs.create-release.outputs.version }}"
-          if [ "$FORMULA_VERSION" = "${{ needs.create-release.outputs.version }}" ]; then
+          if [ "$INSTALLED_VERSION" = "${{ needs.create-release.outputs.version }}" ]; then
             echo "✅ Version matches"
           else
             echo "❌ Version mismatch"
+            echo "Full brew info output:"
+            brew info webtags
             exit 1
           fi
 
