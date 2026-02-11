@@ -2,9 +2,12 @@
 
 [![CI](https://github.com/adjmunro/webtags/actions/workflows/ci.yml/badge.svg)](https://github.com/adjmunro/webtags/actions/workflows/ci.yml)
 [![Release](https://github.com/adjmunro/webtags/actions/workflows/release.yml/badge.svg)](https://github.com/adjmunro/webtags/actions/workflows/release.yml)
+[![Homebrew](https://img.shields.io/badge/Homebrew-tap-orange)](https://github.com/adjmunro/homebrew-tap)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 WebTags transforms your browser bookmarks into a powerful tagging system with automatic Git/GitHub synchronization across devices and browsers. Take control of your bookmarks with hierarchical tags, full version history, and complete data sovereignty.
+
+> **Installation:** `brew install webtags` • [Homebrew Formula](https://github.com/adjmunro/homebrew-tap)
 
 ## ✨ Features
 
