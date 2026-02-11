@@ -12,7 +12,9 @@ use std::path::Path;
 #[cfg(target_os = "macos")]
 use security_framework::os::macos::keychain::SecKeychain;
 
+#[cfg(target_os = "macos")]
 const KEYCHAIN_SERVICE: &str = "com.webtags.encryption";
+#[cfg(target_os = "macos")]
 const KEYCHAIN_ACCOUNT: &str = "master-key";
 const NONCE_SIZE: usize = 12; // 96 bits for AES-GCM
 
@@ -135,6 +137,7 @@ impl EncryptionManager {
     }
 
     #[cfg(not(target_os = "macos"))]
+    #[allow(dead_code)]
     fn store_key_in_keychain(_key: &[u8]) -> Result<()> {
         anyhow::bail!("macOS Keychain not available on this platform");
     }
