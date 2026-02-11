@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-02-12
+
+### Changed
+- Homebrew formula now uses pre-built binaries instead of building from source
+- Installation time reduced from 60s to 2s
+- No longer requires Rust/LLVM dependencies (2.3GB saved)
+- Workflow now updates formula with correct binary tarball SHA256s
+
+### Improved
+- Faster installation experience for end users
+- Reduced disk space requirements
+
 ## [0.1.1] - 2026-02-12
 
 ### Fixed
