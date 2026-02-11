@@ -172,15 +172,28 @@ function createBookmarkElement(bookmark: chrome.bookmarks.BookmarkTreeNode): HTM
   // Extract tags from title (using #tag syntax)
   const { cleanTitle, tags } = extractTagsFromTitle(bookmark.title);
 
-  item.innerHTML = `
-    <div class="bookmark-title">${escapeHtml(cleanTitle)}</div>
-    <div class="bookmark-url">${escapeHtml(bookmark.url || '')}</div>
-    ${tags.length > 0 ? `
-      <div class="bookmark-tags">
-        ${tags.map(tag => `<span class="tag-chip">#${escapeHtml(tag)}</span>`).join('')}
-      </div>
-    ` : ''}
-  `;
+  // Build DOM safely instead of using innerHTML with user data
+  const titleDiv = document.createElement('div');
+  titleDiv.className = 'bookmark-title';
+  titleDiv.textContent = cleanTitle;
+  item.appendChild(titleDiv);
+
+  const urlDiv = document.createElement('div');
+  urlDiv.className = 'bookmark-url';
+  urlDiv.textContent = bookmark.url || '';
+  item.appendChild(urlDiv);
+
+  if (tags.length > 0) {
+    const tagsDiv = document.createElement('div');
+    tagsDiv.className = 'bookmark-tags';
+    for (const tag of tags) {
+      const tagChip = document.createElement('span');
+      tagChip.className = 'tag-chip';
+      tagChip.textContent = `#${tag}`;
+      tagsDiv.appendChild(tagChip);
+    }
+    item.appendChild(tagsDiv);
+  }
 
   item.addEventListener('click', () => {
     if (bookmark.url) {

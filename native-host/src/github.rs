@@ -74,11 +74,9 @@ impl GitHubClient {
             .context("Failed to start device flow")?;
 
         if !response.status().is_success() {
-            anyhow::bail!(
-                "GitHub API error: {} - {}",
-                response.status(),
-                response.text().await?
-            );
+            let status = response.status();
+            // Don't include response body in error (may contain sensitive data)
+            anyhow::bail!("GitHub API error: {}", status);
         }
 
         let device_code: DeviceCodeResponse = response
@@ -183,11 +181,9 @@ impl GitHubClient {
             .context("Failed to create repository")?;
 
         if !response.status().is_success() {
-            anyhow::bail!(
-                "Failed to create repository: {} - {}",
-                response.status(),
-                response.text().await?
-            );
+            let status = response.status();
+            // Don't include response body in error (may contain sensitive data)
+            anyhow::bail!("Failed to create repository: {}", status);
         }
 
         let repo: Repository = response

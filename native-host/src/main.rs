@@ -1,7 +1,7 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use log::{error, info};
 use std::io::{stdin, stdout};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use webtags_host::{git, github, messaging, storage};
 use messaging::{Message, Response};
 
@@ -20,6 +20,63 @@ impl HostConfig {
             .clone()
             .ok_or_else(|| anyhow::anyhow!("Repository not initialized"))
     }
+}
+
+/// Validate repository path for security
+fn validate_repo_path(path: &Path) -> Result<PathBuf> {
+    // Get the intended base directory
+    let home = dirs::home_dir().context("No home directory found")?;
+    let allowed_base = home.join(".local").join("share").join("webtags");
+
+    // Create the allowed base if it doesn't exist
+    if !allowed_base.exists() {
+        std::fs::create_dir_all(&allowed_base)
+            .context("Failed to create webtags directory")?;
+    }
+
+    // Resolve the provided path
+    let resolved = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        allowed_base.join(path)
+    };
+
+    // Canonicalize the allowed base
+    let canonical_base = allowed_base
+        .canonicalize()
+        .context("Failed to canonicalize base directory")?;
+
+    // Try to canonicalize the resolved path
+    // If it doesn't exist, check its parent
+    let canonical_path = if resolved.exists() {
+        resolved.canonicalize()
+            .context("Failed to canonicalize repository path")?
+    } else {
+        // For non-existent paths, verify parent is safe
+        if let Some(parent) = resolved.parent() {
+            if parent.exists() {
+                let canonical_parent = parent.canonicalize()
+                    .context("Failed to canonicalize parent directory")?;
+                if !canonical_parent.starts_with(&canonical_base) {
+                    anyhow::bail!(
+                        "Repository path must be within {}",
+                        canonical_base.display()
+                    );
+                }
+            }
+        }
+        resolved
+    };
+
+    // Verify the path is within allowed base
+    if canonical_path.exists() && !canonical_path.starts_with(&canonical_base) {
+        anyhow::bail!(
+            "Repository path must be within {}",
+            canonical_base.display()
+        );
+    }
+
+    Ok(canonical_path)
 }
 
 #[tokio::main]
@@ -83,13 +140,20 @@ async fn handle_init(
     info!("Initializing repository");
 
     // Determine repo path (use provided or default)
-    let path = repo_path
+    let requested_path = repo_path
         .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            dirs::data_local_dir()
-                .unwrap_or_else(|| PathBuf::from("."))
-                .join("webtags")
-        });
+        .unwrap_or_else(|| PathBuf::from("default-repo"));
+
+    // Validate the path for security
+    let path = match validate_repo_path(&requested_path) {
+        Ok(p) => p,
+        Err(e) => {
+            return Response::Error {
+                message: format!("Invalid repository path: {}", e),
+                code: Some("ERR_INVALID_PATH".to_string()),
+            }
+        }
+    };
 
     // Clone or init repository
     let repo = if let Some(url) = repo_url {
@@ -232,9 +296,18 @@ async fn handle_read(config: &mut HostConfig) -> Response {
     if !bookmarks_file.exists() {
         // Return empty bookmarks data
         let empty_data = storage::BookmarksData::new();
+        let data_value = match serde_json::to_value(empty_data) {
+            Ok(v) => v,
+            Err(e) => {
+                return Response::Error {
+                    message: format!("Failed to serialize empty data: {}", e),
+                    code: Some("ERR_SERIALIZE".to_string()),
+                }
+            }
+        };
         return Response::Success {
             message: "No bookmarks file found, returning empty data".to_string(),
-            data: Some(serde_json::to_value(empty_data).unwrap()),
+            data: Some(data_value),
         };
     }
 
@@ -249,9 +322,19 @@ async fn handle_read(config: &mut HostConfig) -> Response {
         }
     };
 
+    let data_value = match serde_json::to_value(bookmarks_data) {
+        Ok(v) => v,
+        Err(e) => {
+            return Response::Error {
+                message: format!("Failed to serialize bookmarks data: {}", e),
+                code: Some("ERR_SERIALIZE".to_string()),
+            }
+        }
+    };
+
     Response::Success {
         message: "Bookmarks loaded".to_string(),
-        data: Some(serde_json::to_value(bookmarks_data).unwrap()),
+        data: Some(data_value),
     }
 }
 

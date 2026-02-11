@@ -4,7 +4,29 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use url::Url;
 use uuid::Uuid;
+
+/// Validate bookmark URL for security
+fn validate_bookmark_url(url_str: &str) -> Result<()> {
+    // Check length
+    if url_str.is_empty() {
+        anyhow::bail!("URL cannot be empty");
+    }
+    if url_str.len() > 2048 {
+        anyhow::bail!("URL too long (max 2048 characters)");
+    }
+
+    // Parse URL
+    let parsed = Url::parse(url_str)
+        .context("Invalid URL format")?;
+
+    // Only allow safe schemes
+    match parsed.scheme() {
+        "http" | "https" => Ok(()),
+        scheme => anyhow::bail!("Unsafe URL scheme '{}'. Only http and https are allowed.", scheme),
+    }
+}
 
 /// JSON API v1.1 compliant data structure
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -232,12 +254,30 @@ impl BookmarksData {
             anyhow::bail!("Invalid JSON API version: {}", self.jsonapi.version);
         }
 
-        // Validate all resources have unique IDs
+        // Validate all resources have unique IDs and valid data
         let mut ids = std::collections::HashSet::new();
         for resource in &self.data {
             let id = match resource {
-                Resource::Bookmark { id, .. } => id,
-                Resource::Tag { id, .. } => id,
+                Resource::Bookmark { id, attributes, .. } => {
+                    // Validate bookmark URL
+                    validate_bookmark_url(&attributes.url)?;
+                    // Validate title length
+                    if attributes.title.len() > 500 {
+                        anyhow::bail!("Bookmark title too long (max 500 characters)");
+                    }
+                    id
+                }
+                Resource::Tag { id, attributes, .. } => {
+                    // Validate tag name
+                    if attributes.name.is_empty() || attributes.name.len() > 100 {
+                        anyhow::bail!("Tag name must be between 1-100 characters");
+                    }
+                    // Validate tag name doesn't contain HTML
+                    if attributes.name.contains('<') || attributes.name.contains('>') {
+                        anyhow::bail!("Tag name cannot contain HTML characters");
+                    }
+                    id
+                }
             };
             if !ids.insert(id) {
                 anyhow::bail!("Duplicate resource ID: {}", id);

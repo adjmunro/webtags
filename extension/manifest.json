@@ -8,6 +8,9 @@
     "storage",
     "nativeMessaging"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  },
   "background": {
     "service_worker": "background.js"
   },
@@ -27,6 +30,6 @@
     "128": "icons/icon128.png"
   },
   "host_permissions": [
-    "https://github.com/*"
+    "https://github.com/login/*"
   ]
 }
