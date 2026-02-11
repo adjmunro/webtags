@@ -1,0 +1,9 @@
+{
+  "name": "com.webtags.host",
+  "description": "WebTags Native Messaging Host",
+  "path": "/usr/local/bin/webtags-host",
+  "type": "stdio",
+  "allowed_extensions": [
+    "webtags@example.com"
+  ]
+}
