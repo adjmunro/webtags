@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use git2::{
-    Cred, Direction, FetchOptions, IndexAddOption, PushOptions, RemoteCallbacks,
-    Repository, Signature,
+    Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository, Signature,
 };
 use std::path::{Path, PathBuf};
 
@@ -210,12 +209,12 @@ impl GitRepo {
             )?;
 
             // Check if merge resulted in conflicts
-            let index = self.repo.index()?;
+            let mut index = self.repo.index()?;
             if index.has_conflicts() {
                 // For now, just use "theirs" strategy
                 // TODO: Implement conflict resolution UI
-                let mut index = self.repo.index()?;
-                for conflict in index.conflicts()?.flatten() {
+                let conflicts: Vec<_> = index.conflicts()?.flatten().collect();
+                for conflict in conflicts {
                     if let Some(their) = conflict.their {
                         index.add(&their)?;
                     }
@@ -228,6 +227,7 @@ impl GitRepo {
             let tree_id = self.repo.index()?.write_tree()?;
             let tree = self.repo.find_tree(tree_id)?;
             let head_commit = self.repo.head()?.peel_to_commit()?;
+            let fetch_commit_obj = self.repo.find_commit(fetch_commit.id())?;
 
             self.repo.commit(
                 Some("HEAD"),
@@ -235,7 +235,7 @@ impl GitRepo {
                 &signature,
                 &format!("Merge from {}/{}", remote_name, branch),
                 &tree,
-                &[&head_commit, &fetch_commit.id().into()],
+                &[&head_commit, &fetch_commit_obj],
             )?;
 
             // Clean up merge state

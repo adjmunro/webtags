@@ -3,7 +3,7 @@ mod github;
 mod messaging;
 mod storage;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use log::{error, info};
 use messaging::{Message, Response};
 use std::io::{stdin, stdout};

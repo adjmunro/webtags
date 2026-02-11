@@ -244,7 +244,7 @@ pub fn delete_token() -> Result<()> {
     let entry = Entry::new(KEYRING_SERVICE, KEYRING_USERNAME)
         .context("Failed to create keyring entry")?;
     entry
-        .delete_credential()
+        .delete_password()
         .context("Failed to delete token from keychain")?;
     Ok(())
 }
