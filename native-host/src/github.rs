@@ -218,8 +218,8 @@ impl Default for GitHubClient {
 
 /// Store GitHub token in OS keychain
 pub fn store_token(token: &str) -> Result<()> {
-    let entry = Entry::new(KEYRING_SERVICE, KEYRING_USERNAME)
-        .context("Failed to create keyring entry")?;
+    let entry =
+        Entry::new(KEYRING_SERVICE, KEYRING_USERNAME).context("Failed to create keyring entry")?;
     entry
         .set_password(token)
         .context("Failed to store token in keychain")?;
@@ -228,8 +228,8 @@ pub fn store_token(token: &str) -> Result<()> {
 
 /// Retrieve GitHub token from OS keychain
 pub fn get_token() -> Result<String> {
-    let entry = Entry::new(KEYRING_SERVICE, KEYRING_USERNAME)
-        .context("Failed to create keyring entry")?;
+    let entry =
+        Entry::new(KEYRING_SERVICE, KEYRING_USERNAME).context("Failed to create keyring entry")?;
     entry
         .get_password()
         .context("Failed to retrieve token from keychain")
@@ -237,8 +237,8 @@ pub fn get_token() -> Result<String> {
 
 /// Delete GitHub token from OS keychain
 pub fn delete_token() -> Result<()> {
-    let entry = Entry::new(KEYRING_SERVICE, KEYRING_USERNAME)
-        .context("Failed to create keyring entry")?;
+    let entry =
+        Entry::new(KEYRING_SERVICE, KEYRING_USERNAME).context("Failed to create keyring entry")?;
     entry
         .delete_password()
         .context("Failed to delete token from keychain")?;

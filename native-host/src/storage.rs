@@ -18,13 +18,15 @@ fn validate_bookmark_url(url_str: &str) -> Result<()> {
     }
 
     // Parse URL
-    let parsed = Url::parse(url_str)
-        .context("Invalid URL format")?;
+    let parsed = Url::parse(url_str).context("Invalid URL format")?;
 
     // Only allow safe schemes
     match parsed.scheme() {
         "http" | "https" => Ok(()),
-        scheme => anyhow::bail!("Unsafe URL scheme '{}'. Only http and https are allowed.", scheme),
+        scheme => anyhow::bail!(
+            "Unsafe URL scheme '{}'. Only http and https are allowed.",
+            scheme
+        ),
     }
 }
 
@@ -183,15 +185,18 @@ impl BookmarksData {
         let mut hierarchy: HashMap<String, Vec<String>> = HashMap::new();
 
         for tag in self.get_tags() {
-            if let Resource::Tag { id, relationships, .. } = tag {
-                if let Some(rels) = relationships {
-                    if let Some(parent_rel) = &rels.parent {
-                        if let Some(parent_id) = &parent_rel.data {
-                            hierarchy
-                                .entry(parent_id.id.clone())
-                                .or_insert_with(Vec::new)
-                                .push(id.clone());
-                        }
+            if let Resource::Tag {
+                id,
+                relationships: Some(rels),
+                ..
+            } = tag
+            {
+                if let Some(parent_rel) = &rels.parent {
+                    if let Some(parent_id) = &parent_rel.data {
+                        hierarchy
+                            .entry(parent_id.id.clone())
+                            .or_default()
+                            .push(id.clone());
                     }
                 }
             }
@@ -226,17 +231,20 @@ impl BookmarksData {
             }
             visited.insert(current_id.clone());
 
-            if let Some(tag) = tags_by_id.get(&current_id) {
-                if let Resource::Tag { attributes, relationships, .. } = tag {
-                    breadcrumb.insert(0, attributes.name.clone());
+            if let Some(Resource::Tag {
+                attributes,
+                relationships,
+                ..
+            }) = tags_by_id.get(&current_id)
+            {
+                breadcrumb.insert(0, attributes.name.clone());
 
-                    // Check for parent
-                    if let Some(rels) = relationships {
-                        if let Some(parent_rel) = &rels.parent {
-                            if let Some(parent_id) = &parent_rel.data {
-                                current_id = parent_id.id.clone();
-                                continue;
-                            }
+                // Check for parent
+                if let Some(rels) = relationships {
+                    if let Some(parent_rel) = &rels.parent {
+                        if let Some(parent_id) = &parent_rel.data {
+                            current_id = parent_id.id.clone();
+                            continue;
                         }
                     }
                 }
@@ -333,9 +341,9 @@ pub fn read_from_file_with_encryption<P: AsRef<Path>>(
         }
 
         let manager = EncryptionManager::new(true);
-        let decrypted_bytes = manager
-            .read_encrypted_file(path_ref)
-            .context("Failed to decrypt bookmarks file. Touch ID authentication may be required.")?;
+        let decrypted_bytes = manager.read_encrypted_file(path_ref).context(
+            "Failed to decrypt bookmarks file. Touch ID authentication may be required.",
+        )?;
 
         String::from_utf8(decrypted_bytes).context("Decrypted data is not valid UTF-8")?
     } else {
@@ -371,25 +379,26 @@ pub fn write_to_file_with_encryption<P: AsRef<Path>>(
         let manager = EncryptionManager::new(true);
 
         // Serialize to JSON first
-        let json = serde_json::to_string_pretty(data)
-            .context("Failed to serialize bookmarks data")?;
+        let json =
+            serde_json::to_string_pretty(data).context("Failed to serialize bookmarks data")?;
 
         // Encrypt and write
         manager
             .write_encrypted_file(path_ref, json.as_bytes())
-            .context("Failed to write encrypted bookmarks. Touch ID authentication may be required.")?;
+            .context(
+                "Failed to write encrypted bookmarks. Touch ID authentication may be required.",
+            )?;
 
         log::info!("Bookmarks written (encrypted)");
     } else {
         // Write as plain text
-        let json = serde_json::to_string_pretty(data)
-            .context("Failed to serialize bookmarks data")?;
+        let json =
+            serde_json::to_string_pretty(data).context("Failed to serialize bookmarks data")?;
 
         // Atomic write: write to temp file, then rename
         let temp_path = path_ref.with_extension("tmp");
         fs::write(&temp_path, json).context("Failed to write temp file")?;
-        fs::rename(&temp_path, path_ref)
-            .context("Failed to rename temp file to target")?;
+        fs::rename(&temp_path, path_ref).context("Failed to rename temp file to target")?;
 
         log::info!("Bookmarks written (plain text)");
     }
@@ -398,11 +407,7 @@ pub fn write_to_file_with_encryption<P: AsRef<Path>>(
 }
 
 /// Helper to create a new bookmark resource
-pub fn create_bookmark(
-    url: String,
-    title: String,
-    tag_ids: Vec<String>,
-) -> Resource {
+pub fn create_bookmark(url: String, title: String, tag_ids: Vec<String>) -> Resource {
     let now = Utc::now();
     Resource::Bookmark {
         id: Uuid::new_v4().to_string(),
@@ -432,11 +437,7 @@ pub fn create_bookmark(
 }
 
 /// Helper to create a new tag resource
-pub fn create_tag(
-    name: String,
-    color: Option<String>,
-    parent_id: Option<String>,
-) -> Resource {
+pub fn create_tag(name: String, color: Option<String>, parent_id: Option<String>) -> Resource {
     Resource::Tag {
         id: Uuid::new_v4().to_string(),
         attributes: TagAttributes {

@@ -1,7 +1,5 @@
 use anyhow::{Context, Result};
-use git2::{
-    Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository, Signature,
-};
+use git2::{Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository, Signature};
 use std::path::{Path, PathBuf};
 
 pub struct GitRepo {
@@ -29,8 +27,7 @@ impl GitRepo {
 
         // Create parent directories if they don't exist
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .context("Failed to create parent directories")?;
+            std::fs::create_dir_all(parent).context("Failed to create parent directories")?;
         }
 
         let repo = Repository::clone(url, &path).context("Failed to clone repository")?;
@@ -58,7 +55,10 @@ impl GitRepo {
 
     /// Stage a file for commit
     pub fn add_file<P: AsRef<Path>>(&self, file_path: P) -> Result<()> {
-        let mut index = self.repo.index().context("Failed to get repository index")?;
+        let mut index = self
+            .repo
+            .index()
+            .context("Failed to get repository index")?;
 
         // Convert to relative path from repo root
         let relative_path = if file_path.as_ref().is_absolute() {
@@ -192,9 +192,8 @@ impl GitRepo {
             let mut reference = self.repo.find_reference(&refname)?;
             reference.set_target(fetch_commit.id(), "Fast-forward")?;
             self.repo.set_head(&refname)?;
-            self.repo.checkout_head(Some(
-                git2::build::CheckoutBuilder::default().force(),
-            ))?;
+            self.repo
+                .checkout_head(Some(git2::build::CheckoutBuilder::default().force()))?;
         } else {
             // Need to merge - for now, prefer remote (simple strategy)
             // In a real implementation, we'd want conflict resolution UI
@@ -248,13 +247,8 @@ impl GitRepo {
     /// Get the current commit message
     pub fn get_last_commit_message(&self) -> Result<String> {
         let head = self.repo.head().context("Failed to get HEAD")?;
-        let commit = head
-            .peel_to_commit()
-            .context("Failed to peel to commit")?;
-        Ok(commit
-            .message()
-            .unwrap_or("(no message)")
-            .to_string())
+        let commit = head.peel_to_commit().context("Failed to peel to commit")?;
+        Ok(commit.message().unwrap_or("(no message)").to_string())
     }
 
     /// Check if working directory is clean
@@ -267,7 +261,7 @@ impl GitRepo {
     }
 
     /// Get signature from git config or use default
-    fn get_signature(&self) -> Result<Signature> {
+    fn get_signature(&self) -> Result<Signature<'_>> {
         let config = self.repo.config().context("Failed to get git config")?;
 
         let name = config

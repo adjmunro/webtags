@@ -85,8 +85,8 @@ impl EncryptionManager {
     /// Store encryption key in macOS Keychain with Touch ID requirement
     #[cfg(target_os = "macos")]
     fn store_key_in_keychain(key: &[u8]) -> Result<()> {
-        use std::process::Command;
         use std::io::Read;
+        use std::process::Command;
 
         // Convert key to base64 for storage
         let key_b64 = BASE64.encode(key);
@@ -99,10 +99,14 @@ impl EncryptionManager {
         let mut child = Command::new("security")
             .args([
                 "add-generic-password",
-                "-a", KEYCHAIN_ACCOUNT,
-                "-s", KEYCHAIN_SERVICE,
-                "-w", &key_b64,
-                "-T", "", // Require authentication (Touch ID) for access
+                "-a",
+                KEYCHAIN_ACCOUNT,
+                "-s",
+                KEYCHAIN_SERVICE,
+                "-w",
+                &key_b64,
+                "-T",
+                "",   // Require authentication (Touch ID) for access
                 "-U", // Update if exists
             ])
             .stdin(std::process::Stdio::piped())
@@ -111,16 +115,21 @@ impl EncryptionManager {
             .spawn()
             .context("Failed to spawn security command")?;
 
-        let status = child.wait().context("Failed to wait for security command")?;
+        let status = child
+            .wait()
+            .context("Failed to wait for security command")?;
 
         if status.success() {
             log::info!("Encryption key stored in Keychain with Touch ID requirement");
             Ok(())
         } else {
-            let stderr = child.stderr.and_then(|mut s| {
-                let mut buf = String::new();
-                s.read_to_string(&mut buf).ok().map(|_| buf)
-            }).unwrap_or_default();
+            let stderr = child
+                .stderr
+                .and_then(|mut s| {
+                    let mut buf = String::new();
+                    s.read_to_string(&mut buf).ok().map(|_| buf)
+                })
+                .unwrap_or_default();
             anyhow::bail!("Failed to store key in Keychain: {}", stderr)
         }
     }
@@ -242,11 +251,10 @@ impl EncryptionManager {
 
     /// Read encrypted file
     pub fn read_encrypted_file<P: AsRef<Path>>(&self, path: P) -> Result<Vec<u8>> {
-        let content = fs::read_to_string(path.as_ref())
-            .context("Failed to read encrypted file")?;
+        let content = fs::read_to_string(path.as_ref()).context("Failed to read encrypted file")?;
 
-        let encrypted: EncryptedData = serde_json::from_str(&content)
-            .context("Failed to parse encrypted file")?;
+        let encrypted: EncryptedData =
+            serde_json::from_str(&content).context("Failed to parse encrypted file")?;
 
         self.decrypt(&encrypted)
     }
@@ -261,8 +269,7 @@ impl EncryptionManager {
         // Atomic write
         let temp_path = path.as_ref().with_extension("tmp");
         fs::write(&temp_path, json).context("Failed to write temp file")?;
-        fs::rename(&temp_path, path.as_ref())
-            .context("Failed to rename temp file to target")?;
+        fs::rename(&temp_path, path.as_ref()).context("Failed to rename temp file to target")?;
 
         Ok(())
     }
@@ -274,8 +281,7 @@ pub fn is_encrypted<P: AsRef<Path>>(path: P) -> Result<bool> {
         return Ok(false);
     }
 
-    let content = fs::read_to_string(path.as_ref())
-        .context("Failed to read file")?;
+    let content = fs::read_to_string(path.as_ref()).context("Failed to read file")?;
 
     if let Ok(data) = serde_json::from_str::<EncryptedData>(&content) {
         Ok(data.encrypted)
@@ -367,7 +373,9 @@ mod tests {
         // (before keychain access is attempted)
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("Unsupported encryption algorithm") || err_msg.contains("Keychain"));
+        assert!(
+            err_msg.contains("Unsupported encryption algorithm") || err_msg.contains("Keychain")
+        );
     }
 
     #[test]
@@ -393,7 +401,8 @@ mod tests {
         use tempfile::NamedTempFile;
 
         let mut file = NamedTempFile::new().unwrap();
-        file.write_all(b"{\"jsonapi\": {\"version\": \"1.1\"}, \"data\": []}").unwrap();
+        file.write_all(b"{\"jsonapi\": {\"version\": \"1.1\"}, \"data\": []}")
+            .unwrap();
         file.flush().unwrap();
 
         let result = is_encrypted(file.path());

@@ -240,10 +240,7 @@ fn test_bookmark_with_tags_integration() {
     assert_eq!(read_data.included.as_ref().unwrap().len(), 2);
 
     // Verify bookmark has relationships
-    if let webtags_host::storage::Resource::Bookmark {
-        relationships, ..
-    } = &read_data.data[0]
-    {
+    if let webtags_host::storage::Resource::Bookmark { relationships, .. } = &read_data.data[0] {
         assert!(relationships.is_some());
         let tags = relationships.as_ref().unwrap().tags.as_ref().unwrap();
         assert_eq!(tags.data.len(), 2);
@@ -390,7 +387,8 @@ fn test_git_and_storage_integration() {
 
     // Add and commit
     repo.add_file("bookmarks.json").unwrap();
-    let commit_msg = format!("Update bookmarks: {} bookmarks, {} tags",
+    let commit_msg = format!(
+        "Update bookmarks: {} bookmarks, {} tags",
         data.get_bookmarks().len(),
         data.get_tags().len()
     );
@@ -412,7 +410,8 @@ fn test_git_and_storage_integration() {
     write_to_file(&bookmarks_file, &data).unwrap();
     repo.add_file("bookmarks.json").unwrap();
 
-    let commit_msg2 = format!("Update bookmarks: {} bookmarks, {} tags",
+    let commit_msg2 = format!(
+        "Update bookmarks: {} bookmarks, {} tags",
         data.get_bookmarks().len(),
         data.get_tags().len()
     );

@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
 use log::{error, info};
+use messaging::{Message, Response};
 use std::io::{stdin, stdout};
 use std::path::{Path, PathBuf};
 use webtags_host::{encryption, git, github, messaging, storage};
-use messaging::{Message, Response};
 
 /// Configuration for the native host
 struct HostConfig {
@@ -34,8 +34,7 @@ fn validate_repo_path(path: &Path) -> Result<PathBuf> {
 
     // Create the allowed base if it doesn't exist
     if !allowed_base.exists() {
-        std::fs::create_dir_all(&allowed_base)
-            .context("Failed to create webtags directory")?;
+        std::fs::create_dir_all(&allowed_base).context("Failed to create webtags directory")?;
     }
 
     // Resolve the provided path
@@ -53,13 +52,15 @@ fn validate_repo_path(path: &Path) -> Result<PathBuf> {
     // Try to canonicalize the resolved path
     // If it doesn't exist, check its parent
     let canonical_path = if resolved.exists() {
-        resolved.canonicalize()
+        resolved
+            .canonicalize()
             .context("Failed to canonicalize repository path")?
     } else {
         // For non-existent paths, verify parent is safe
         if let Some(parent) = resolved.parent() {
             if parent.exists() {
-                let canonical_parent = parent.canonicalize()
+                let canonical_parent = parent
+                    .canonicalize()
                     .context("Failed to canonicalize parent directory")?;
                 if !canonical_parent.starts_with(&canonical_base) {
                     anyhow::bail!(
@@ -86,8 +87,7 @@ fn validate_repo_path(path: &Path) -> Result<PathBuf> {
 #[tokio::main]
 async fn main() {
     // Initialize logger
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
-        .init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     info!("WebTags native messaging host started");
 
@@ -127,7 +127,10 @@ async fn main() {
 
 async fn handle_message(message: Message, config: &mut HostConfig) -> Response {
     match message {
-        Message::Init { repo_path, repo_url } => handle_init(config, repo_path, repo_url).await,
+        Message::Init {
+            repo_path,
+            repo_url,
+        } => handle_init(config, repo_path, repo_url).await,
         Message::Write { data } => handle_write(config, data).await,
         Message::Read => handle_read(config).await,
         Message::Sync => handle_sync(config).await,
@@ -323,18 +326,16 @@ async fn handle_read(config: &mut HostConfig) -> Response {
     }
 
     // Read from file (with encryption support)
-    let bookmarks_data = match storage::read_from_file_with_encryption(
-        &bookmarks_file,
-        config.encryption_enabled,
-    ) {
-        Ok(data) => data,
-        Err(e) => {
-            return Response::Error {
-                message: format!("Failed to read bookmarks file: {}", e),
-                code: Some("ERR_READ_FILE".to_string()),
+    let bookmarks_data =
+        match storage::read_from_file_with_encryption(&bookmarks_file, config.encryption_enabled) {
+            Ok(data) => data,
+            Err(e) => {
+                return Response::Error {
+                    message: format!("Failed to read bookmarks file: {}", e),
+                    code: Some("ERR_READ_FILE".to_string()),
+                }
             }
-        }
-    };
+        };
 
     let data_value = match serde_json::to_value(bookmarks_data) {
         Ok(v) => v,
@@ -512,7 +513,8 @@ async fn handle_enable_encryption(config: &mut HostConfig) -> Response {
     #[cfg(not(target_os = "macos"))]
     {
         return Response::Error {
-            message: "Encryption with biometric authentication is only supported on macOS".to_string(),
+            message: "Encryption with biometric authentication is only supported on macOS"
+                .to_string(),
             code: Some("ERR_PLATFORM_NOT_SUPPORTED".to_string()),
         };
     }
@@ -588,7 +590,8 @@ async fn handle_enable_encryption(config: &mut HostConfig) -> Response {
         config.encryption_enabled = true;
 
         Response::Success {
-            message: "Encryption enabled. Your bookmarks are now encrypted with Touch ID.".to_string(),
+            message: "Encryption enabled. Your bookmarks are now encrypted with Touch ID."
+                .to_string(),
             data: Some(serde_json::json!({
                 "encryption_enabled": true,
             })),
@@ -630,18 +633,16 @@ async fn handle_disable_encryption(config: &mut HostConfig) -> Response {
             match encryption::is_encrypted(&bookmarks_file) {
                 Ok(true) => {
                     // Read encrypted bookmarks
-                    let bookmarks_data = match storage::read_from_file_with_encryption(
-                        &bookmarks_file,
-                        true,
-                    ) {
-                        Ok(data) => data,
-                        Err(e) => {
-                            return Response::Error {
-                                message: format!("Failed to decrypt bookmarks: {}", e),
-                                code: Some("ERR_DECRYPT".to_string()),
-                            };
-                        }
-                    };
+                    let bookmarks_data =
+                        match storage::read_from_file_with_encryption(&bookmarks_file, true) {
+                            Ok(data) => data,
+                            Err(e) => {
+                                return Response::Error {
+                                    message: format!("Failed to decrypt bookmarks: {}", e),
+                                    code: Some("ERR_DECRYPT".to_string()),
+                                };
+                            }
+                        };
 
                     // Write plain text version
                     if let Err(e) = storage::write_to_file(&bookmarks_file, &bookmarks_data) {

@@ -105,9 +105,7 @@ pub fn write_response<W: Write>(mut writer: W, response: &Response) -> Result<()
 }
 
 /// Async version of read_message for use in async contexts
-pub async fn read_message_async<R: AsyncReadExt + Unpin>(
-    mut reader: R,
-) -> Result<Message> {
+pub async fn read_message_async<R: AsyncReadExt + Unpin>(mut reader: R) -> Result<Message> {
     // Read 4-byte length prefix
     let mut length_bytes = [0u8; 4];
     reader
