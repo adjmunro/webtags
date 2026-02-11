@@ -1,13 +1,9 @@
-mod git;
-mod github;
-mod messaging;
-mod storage;
-
 use anyhow::Result;
 use log::{error, info};
-use messaging::{Message, Response};
 use std::io::{stdin, stdout};
 use std::path::PathBuf;
+use webtags_host::{git, github, messaging, storage};
+use messaging::{Message, Response};
 
 /// Configuration for the native host
 struct HostConfig {

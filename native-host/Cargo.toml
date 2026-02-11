@@ -43,6 +43,14 @@ env_logger = "0.11"
 # Directory utilities
 dirs = "5.0"
 
+[lib]
+name = "webtags_host"
+path = "src/lib.rs"
+
+[[bin]]
+name = "webtags-host"
+path = "src/main.rs"
+
 [dev-dependencies]
 # Testing utilities
 tempfile = "3.8"
