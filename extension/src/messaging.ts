@@ -212,6 +212,33 @@ export class NativeMessagingClient {
   }
 
   /**
+   * Enable encryption
+   */
+  async enableEncryption(): Promise<NativeResponse> {
+    return this.sendMessage({
+      type: 'enableencryption',
+    });
+  }
+
+  /**
+   * Disable encryption
+   */
+  async disableEncryption(): Promise<NativeResponse> {
+    return this.sendMessage({
+      type: 'disableencryption',
+    });
+  }
+
+  /**
+   * Get encryption status
+   */
+  async encryptionStatus(): Promise<NativeResponse> {
+    return this.sendMessage({
+      type: 'encryptionstatus',
+    });
+  }
+
+  /**
    * Check if connected to native host
    */
   isConnected(): boolean {

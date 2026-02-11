@@ -100,6 +100,11 @@ async function loadExtensionState(): Promise<void> {
     const response = await chrome.runtime.sendMessage({ type: 'getState' });
     extensionState = response;
 
+    if (!extensionState) {
+      showStatus('Failed to load extension state', 'error');
+      return;
+    }
+
     if (extensionState.initialized) {
       switchView('main');
       await loadBookmarks();

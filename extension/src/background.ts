@@ -208,8 +208,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         performSync().then(() => {
           sendResponse({ success: true });
         });
-      } else {
+      } else if (response.type === 'error') {
         sendResponse({ success: false, error: response.message });
+      } else {
+        sendResponse({ success: false, error: 'Unexpected response type' });
       }
     }).catch((error) => {
       sendResponse({ success: false, error: error.message });
@@ -228,7 +230,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'enableEncryption') {
-    nativeClient.sendMessage({ type: 'enableencryption' }).then((response) => {
+    nativeClient.enableEncryption().then((response) => {
       if (response.type === 'success') {
         state.encryptionEnabled = true;
       }
@@ -240,7 +242,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'disableEncryption') {
-    nativeClient.sendMessage({ type: 'disableencryption' }).then((response) => {
+    nativeClient.disableEncryption().then((response) => {
       if (response.type === 'success') {
         state.encryptionEnabled = false;
       }
@@ -252,7 +254,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'encryptionStatus') {
-    nativeClient.sendMessage({ type: 'encryptionstatus' }).then((response) => {
+    nativeClient.encryptionStatus().then((response) => {
       if (response.type === 'success' && response.data) {
         state.encryptionEnabled = response.data.enabled;
         state.encryptionSupported = response.data.supported;
