@@ -3,7 +3,9 @@ use log::{error, info};
 use messaging::{Message, Response};
 use std::io::{stdin, stdout};
 use std::path::{Path, PathBuf};
-use webtags_host::{encryption, git, github, messaging, storage};
+#[cfg(target_os = "macos")]
+use webtags_host::encryption;
+use webtags_host::{git, github, messaging, storage};
 
 /// Configuration for the native host
 struct HostConfig {
@@ -499,16 +501,17 @@ async fn handle_status(config: &HostConfig) -> Response {
     }
 }
 
+#[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
 async fn handle_enable_encryption(config: &mut HostConfig) -> Response {
     info!("Enabling encryption");
 
     #[cfg(not(target_os = "macos"))]
     {
-        return Response::Error {
+        Response::Error {
             message: "Encryption with biometric authentication is only supported on macOS"
                 .to_string(),
             code: Some("ERR_PLATFORM_NOT_SUPPORTED".to_string()),
-        };
+        }
     }
 
     #[cfg(target_os = "macos")]
@@ -597,10 +600,10 @@ async fn handle_disable_encryption(config: &mut HostConfig) -> Response {
     #[cfg(not(target_os = "macos"))]
     {
         config.encryption_enabled = false;
-        return Response::Success {
+        Response::Success {
             message: "Encryption disabled".to_string(),
             data: None,
-        };
+        }
     }
 
     #[cfg(target_os = "macos")]
