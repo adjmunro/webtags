@@ -2,17 +2,21 @@ use anyhow::{Context, Result};
 use log::{error, info};
 use std::io::{stdin, stdout};
 use std::path::{Path, PathBuf};
-use webtags_host::{git, github, messaging, storage};
+use webtags_host::{encryption, git, github, messaging, storage};
 use messaging::{Message, Response};
 
 /// Configuration for the native host
 struct HostConfig {
     repo_path: Option<PathBuf>,
+    encryption_enabled: bool,
 }
 
 impl HostConfig {
     fn new() -> Self {
-        Self { repo_path: None }
+        Self {
+            repo_path: None,
+            encryption_enabled: false,
+        }
     }
 
     fn get_repo_path(&self) -> Result<PathBuf> {
@@ -129,6 +133,9 @@ async fn handle_message(message: Message, config: &mut HostConfig) -> Response {
         Message::Sync => handle_sync(config).await,
         Message::Auth { method, token } => handle_auth(method, token).await,
         Message::Status => handle_status(config).await,
+        Message::EnableEncryption => handle_enable_encryption(config).await,
+        Message::DisableEncryption => handle_disable_encryption(config).await,
+        Message::EncryptionStatus => handle_encryption_status(config).await,
     }
 }
 
@@ -220,9 +227,13 @@ async fn handle_write(config: &mut HostConfig, data: serde_json::Value) -> Respo
         };
     }
 
-    // Write to file
+    // Write to file (with encryption support)
     let bookmarks_file = repo_path.join("bookmarks.json");
-    if let Err(e) = storage::write_to_file(&bookmarks_file, &bookmarks_data) {
+    if let Err(e) = storage::write_to_file_with_encryption(
+        &bookmarks_file,
+        &bookmarks_data,
+        config.encryption_enabled,
+    ) {
         return Response::Error {
             message: format!("Failed to write bookmarks file: {}", e),
             code: Some("ERR_WRITE_FILE".to_string()),
@@ -311,8 +322,11 @@ async fn handle_read(config: &mut HostConfig) -> Response {
         };
     }
 
-    // Read from file
-    let bookmarks_data = match storage::read_from_file(&bookmarks_file) {
+    // Read from file (with encryption support)
+    let bookmarks_data = match storage::read_from_file_with_encryption(
+        &bookmarks_file,
+        config.encryption_enabled,
+    ) {
         Ok(data) => data,
         Err(e) => {
             return Response::Error {
@@ -487,6 +501,204 @@ async fn handle_status(config: &HostConfig) -> Response {
             "is_clean": is_clean,
             "has_remote": has_remote,
             "last_commit": last_commit,
+            "encryption_enabled": config.encryption_enabled,
+        })),
+    }
+}
+
+async fn handle_enable_encryption(config: &mut HostConfig) -> Response {
+    info!("Enabling encryption");
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        return Response::Error {
+            message: "Encryption with biometric authentication is only supported on macOS".to_string(),
+            code: Some("ERR_PLATFORM_NOT_SUPPORTED".to_string()),
+        };
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use encryption::EncryptionManager;
+
+        // Generate and store encryption key
+        if let Err(e) = EncryptionManager::generate_and_store_key() {
+            return Response::Error {
+                message: format!("Failed to generate encryption key: {}", e),
+                code: Some("ERR_KEYGEN".to_string()),
+            };
+        }
+
+        // Get repo path
+        let repo_path = match config.get_repo_path() {
+            Ok(path) => path,
+            Err(e) => {
+                return Response::Error {
+                    message: e.to_string(),
+                    code: Some("ERR_NOT_INITIALIZED".to_string()),
+                }
+            }
+        };
+
+        let bookmarks_file = repo_path.join("bookmarks.json");
+
+        // If bookmarks file exists and is not encrypted, encrypt it
+        if bookmarks_file.exists() {
+            match encryption::is_encrypted(&bookmarks_file) {
+                Ok(true) => {
+                    // Already encrypted
+                    info!("Bookmarks file is already encrypted");
+                }
+                Ok(false) => {
+                    // Read plain bookmarks
+                    let bookmarks_data = match storage::read_from_file(&bookmarks_file) {
+                        Ok(data) => data,
+                        Err(e) => {
+                            return Response::Error {
+                                message: format!("Failed to read bookmarks for encryption: {}", e),
+                                code: Some("ERR_READ_FOR_ENCRYPT".to_string()),
+                            };
+                        }
+                    };
+
+                    // Write encrypted version
+                    if let Err(e) = storage::write_to_file_with_encryption(
+                        &bookmarks_file,
+                        &bookmarks_data,
+                        true,
+                    ) {
+                        return Response::Error {
+                            message: format!("Failed to encrypt bookmarks: {}", e),
+                            code: Some("ERR_ENCRYPT".to_string()),
+                        };
+                    }
+
+                    info!("Bookmarks file encrypted successfully");
+                }
+                Err(e) => {
+                    return Response::Error {
+                        message: format!("Failed to check encryption status: {}", e),
+                        code: Some("ERR_CHECK_ENCRYPTION".to_string()),
+                    };
+                }
+            }
+        }
+
+        // Enable encryption in config
+        config.encryption_enabled = true;
+
+        Response::Success {
+            message: "Encryption enabled. Your bookmarks are now encrypted with Touch ID.".to_string(),
+            data: Some(serde_json::json!({
+                "encryption_enabled": true,
+            })),
+        }
+    }
+}
+
+async fn handle_disable_encryption(config: &mut HostConfig) -> Response {
+    info!("Disabling encryption");
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        config.encryption_enabled = false;
+        return Response::Success {
+            message: "Encryption disabled".to_string(),
+            data: None,
+        };
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use encryption::EncryptionManager;
+
+        // Get repo path
+        let repo_path = match config.get_repo_path() {
+            Ok(path) => path,
+            Err(e) => {
+                return Response::Error {
+                    message: e.to_string(),
+                    code: Some("ERR_NOT_INITIALIZED".to_string()),
+                }
+            }
+        };
+
+        let bookmarks_file = repo_path.join("bookmarks.json");
+
+        // If bookmarks file exists and is encrypted, decrypt it
+        if bookmarks_file.exists() {
+            match encryption::is_encrypted(&bookmarks_file) {
+                Ok(true) => {
+                    // Read encrypted bookmarks
+                    let bookmarks_data = match storage::read_from_file_with_encryption(
+                        &bookmarks_file,
+                        true,
+                    ) {
+                        Ok(data) => data,
+                        Err(e) => {
+                            return Response::Error {
+                                message: format!("Failed to decrypt bookmarks: {}", e),
+                                code: Some("ERR_DECRYPT".to_string()),
+                            };
+                        }
+                    };
+
+                    // Write plain text version
+                    if let Err(e) = storage::write_to_file(&bookmarks_file, &bookmarks_data) {
+                        return Response::Error {
+                            message: format!("Failed to write decrypted bookmarks: {}", e),
+                            code: Some("ERR_WRITE_DECRYPT".to_string()),
+                        };
+                    }
+
+                    info!("Bookmarks file decrypted successfully");
+                }
+                Ok(false) => {
+                    // Already plain text
+                    info!("Bookmarks file is already in plain text");
+                }
+                Err(e) => {
+                    return Response::Error {
+                        message: format!("Failed to check encryption status: {}", e),
+                        code: Some("ERR_CHECK_ENCRYPTION".to_string()),
+                    };
+                }
+            }
+        }
+
+        // Delete encryption key from Keychain
+        if let Err(e) = EncryptionManager::delete_key_from_keychain() {
+            log::warn!("Failed to delete encryption key: {}", e);
+            // Don't fail the operation, just log
+        }
+
+        // Disable encryption in config
+        config.encryption_enabled = false;
+
+        Response::Success {
+            message: "Encryption disabled. Your bookmarks are now in plain text.".to_string(),
+            data: Some(serde_json::json!({
+                "encryption_enabled": false,
+            })),
+        }
+    }
+}
+
+async fn handle_encryption_status(config: &HostConfig) -> Response {
+    info!("Getting encryption status");
+
+    #[cfg(target_os = "macos")]
+    let platform_supported = true;
+
+    #[cfg(not(target_os = "macos"))]
+    let platform_supported = false;
+
+    Response::Success {
+        message: "Encryption status retrieved".to_string(),
+        data: Some(serde_json::json!({
+            "encryption_enabled": config.encryption_enabled,
+            "platform_supported": platform_supported,
+            "biometric_available": platform_supported, // Simplified for now
         })),
     }
 }

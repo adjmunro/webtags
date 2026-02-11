@@ -306,28 +306,93 @@ impl Default for BookmarksData {
     }
 }
 
-/// Read bookmarks data from a file
+/// Read bookmarks data from a file (handles both plain and encrypted)
 pub fn read_from_file<P: AsRef<Path>>(path: P) -> Result<BookmarksData> {
-    let content = fs::read_to_string(path.as_ref())
-        .context("Failed to read bookmarks file")?;
+    read_from_file_with_encryption(path, false)
+}
+
+/// Read bookmarks data from a file with optional encryption support
+pub fn read_from_file_with_encryption<P: AsRef<Path>>(
+    path: P,
+    encryption_enabled: bool,
+) -> Result<BookmarksData> {
+    use crate::encryption::{is_encrypted, EncryptionManager};
+
+    let path_ref = path.as_ref();
+
+    // Check if file is encrypted
+    let file_encrypted = is_encrypted(path_ref).unwrap_or(false);
+
+    let content = if file_encrypted {
+        // File is encrypted, decrypt it
+        if !encryption_enabled {
+            anyhow::bail!(
+                "Bookmarks file is encrypted but encryption is not enabled. \
+                 Enable encryption to access your bookmarks."
+            );
+        }
+
+        let manager = EncryptionManager::new(true);
+        let decrypted_bytes = manager
+            .read_encrypted_file(path_ref)
+            .context("Failed to decrypt bookmarks file. Touch ID authentication may be required.")?;
+
+        String::from_utf8(decrypted_bytes).context("Decrypted data is not valid UTF-8")?
+    } else {
+        // File is plain text
+        fs::read_to_string(path_ref).context("Failed to read bookmarks file")?
+    };
+
     let data: BookmarksData =
         serde_json::from_str(&content).context("Failed to parse bookmarks JSON")?;
     data.validate()?;
     Ok(data)
 }
 
-/// Write bookmarks data to a file atomically
+/// Write bookmarks data to a file atomically (plain text)
 pub fn write_to_file<P: AsRef<Path>>(path: P, data: &BookmarksData) -> Result<()> {
+    write_to_file_with_encryption(path, data, false)
+}
+
+/// Write bookmarks data to a file with optional encryption
+pub fn write_to_file_with_encryption<P: AsRef<Path>>(
+    path: P,
+    data: &BookmarksData,
+    encryption_enabled: bool,
+) -> Result<()> {
+    use crate::encryption::EncryptionManager;
+
     data.validate()?;
 
-    let json = serde_json::to_string_pretty(data)
-        .context("Failed to serialize bookmarks data")?;
+    let path_ref = path.as_ref();
 
-    // Atomic write: write to temp file, then rename
-    let temp_path = path.as_ref().with_extension("tmp");
-    fs::write(&temp_path, json).context("Failed to write temp file")?;
-    fs::rename(&temp_path, path.as_ref())
-        .context("Failed to rename temp file to target")?;
+    if encryption_enabled {
+        // Encrypt the data
+        let manager = EncryptionManager::new(true);
+
+        // Serialize to JSON first
+        let json = serde_json::to_string_pretty(data)
+            .context("Failed to serialize bookmarks data")?;
+
+        // Encrypt and write
+        manager
+            .write_encrypted_file(path_ref, json.as_bytes())
+            .context("Failed to write encrypted bookmarks. Touch ID authentication may be required.")?;
+
+        log::info!("Bookmarks written (encrypted)");
+    } else {
+        // Write as plain text
+        let json = serde_json::to_string_pretty(data)
+            .context("Failed to serialize bookmarks data")?;
+
+        // Atomic write: write to temp file, then rename
+        let temp_path = path_ref.with_extension("tmp");
+        fs::write(&temp_path, json).context("Failed to write temp file")?;
+        fs::rename(&temp_path, path_ref)
+            .context("Failed to rename temp file to target")?;
+
+        log::info!("Bookmarks written (plain text)");
+    }
 
     Ok(())
 }

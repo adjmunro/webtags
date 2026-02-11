@@ -21,6 +21,9 @@ pub enum Message {
         token: Option<String>,
     },
     Status,
+    EnableEncryption,
+    DisableEncryption,
+    EncryptionStatus,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
