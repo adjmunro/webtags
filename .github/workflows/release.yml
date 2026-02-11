@@ -108,13 +108,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: adjmunro/homebrew-tap
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: homebrew-tap
 
-      - name: Download macOS ARM64 SHA256
+      - name: Calculate source archive SHA256
         run: |
-          wget https://github.com/adjmunro/webtags/releases/download/v${{ needs.create-release.outputs.version }}/webtags-${{ needs.create-release.outputs.version }}-aarch64-macos.tar.gz.sha256
-          SHA256=$(cat webtags-${{ needs.create-release.outputs.version }}-aarch64-macos.tar.gz.sha256 | awk '{print $1}')
+          curl -sL https://github.com/adjmunro/webtags/archive/refs/tags/v${{ needs.create-release.outputs.version }}.tar.gz | shasum -a 256 | awk '{print $1}' > source.sha256
+          SHA256=$(cat source.sha256)
           echo "SHA256=$SHA256" >> $GITHUB_ENV
 
       - name: Update formula
