@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://webtags.dev/schemas/bookmarks-v1.1.json",
+  "title": "WebTags Bookmarks JSON API v1.1 Schema",
+  "description": "JSON API v1.1 compliant schema for WebTags bookmarks with hierarchical tags",
+  "type": "object",
+  "required": ["jsonapi", "data"],
+  "properties": {
+    "jsonapi": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "const": "1.1"
+        }
+      }
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/definitions/bookmark" },
+          { "$ref": "#/definitions/tag" }
+        ]
+      }
+    },
+    "included": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/definitions/bookmark" },
+          { "$ref": "#/definitions/tag" }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "bookmark": {
+      "type": "object",
+      "required": ["type", "id", "attributes"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "bookmark"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]+$"
+        },
+        "attributes": {
+          "type": "object",
+          "required": ["url", "title", "created"],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "title": {
+              "type": "string"
+            },
+            "created": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "modified": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "notes": {
+              "type": "string"
+            }
+          }
+        },
+        "relationships": {
+          "type": "object",
+          "properties": {
+            "tags": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["type", "id"],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "tag"
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tag": {
+      "type": "object",
+      "required": ["type", "id", "attributes"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "tag"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]+$"
+        },
+        "attributes": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "color": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        },
+        "relationships": {
+          "type": "object",
+          "properties": {
+            "parent": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": ["type", "id"],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "tag"
+                        },
+                        "id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
