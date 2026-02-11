@@ -317,7 +317,7 @@ mod tests {
         let repo = GitRepo::init(repo_path).unwrap();
 
         // Create a test file
-        let file_path = create_test_file(repo_path, "test.txt", "Hello, World!");
+        let _file_path = create_test_file(repo_path, "test.txt", "Hello, World!");
 
         // Add and commit
         repo.add_file("test.txt").unwrap();
