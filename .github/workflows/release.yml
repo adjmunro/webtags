@@ -1,0 +1,139 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+          body: |
+            WebTags Release ${{ steps.get_version.outputs.version }}
+
+            ## Installation
+
+            ### Via Homebrew
+            ```bash
+            brew tap adjmunro/tap
+            brew install webtags
+            ```
+
+            ### Manual Installation
+            Download the appropriate binary for your platform below.
+
+            ## Changes
+            See [CHANGELOG.md](https://github.com/adjmunro/webtags/blob/master/CHANGELOG.md) for details.
+
+  build-release:
+    name: Build Release
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: webtags-host
+            asset_name: webtags-${{ needs.create-release.outputs.version }}-x86_64-linux
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: webtags-host
+            asset_name: webtags-${{ needs.create-release.outputs.version }}-x86_64-macos
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: webtags-host
+            asset_name: webtags-${{ needs.create-release.outputs.version }}-aarch64-macos
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build
+        run: cd native-host && cargo build --release --target ${{ matrix.target }}
+
+      - name: Package
+        run: |
+          cd native-host/target/${{ matrix.target }}/release
+          tar czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
+          shasum -a 256 ${{ matrix.asset_name }}.tar.gz > ${{ matrix.asset_name }}.tar.gz.sha256
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: native-host/target/${{ matrix.target }}/release/${{ matrix.asset_name }}.tar.gz
+          asset_name: ${{ matrix.asset_name }}.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload SHA256
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: native-host/target/${{ matrix.target }}/release/${{ matrix.asset_name }}.tar.gz.sha256
+          asset_name: ${{ matrix.asset_name }}.tar.gz.sha256
+          asset_content_type: text/plain
+
+  update-homebrew:
+    name: Update Homebrew Formula
+    needs: [create-release, build-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: adjmunro/homebrew-tap
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: homebrew-tap
+
+      - name: Download macOS ARM64 SHA256
+        run: |
+          wget https://github.com/adjmunro/webtags/releases/download/v${{ needs.create-release.outputs.version }}/webtags-${{ needs.create-release.outputs.version }}-aarch64-macos.tar.gz.sha256
+          SHA256=$(cat webtags-${{ needs.create-release.outputs.version }}-aarch64-macos.tar.gz.sha256 | awk '{print $1}')
+          echo "SHA256=$SHA256" >> $GITHUB_ENV
+
+      - name: Update formula
+        run: |
+          cd homebrew-tap
+          sed -i "s|url \".*\"|url \"https://github.com/adjmunro/webtags/archive/refs/tags/v${{ needs.create-release.outputs.version }}.tar.gz\"|" Formula/webtags.rb
+          sed -i "s|sha256 \".*\"|sha256 \"${{ env.SHA256 }}\"|" Formula/webtags.rb
+          sed -i "s|version \".*\"|version \"${{ needs.create-release.outputs.version }}\"|" Formula/webtags.rb
+
+      - name: Commit and push
+        run: |
+          cd homebrew-tap
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add Formula/webtags.rb
+          git commit -m "Update webtags to v${{ needs.create-release.outputs.version }}"
+          git push

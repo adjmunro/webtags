@@ -1,5 +1,9 @@
 # WebTags: Git-Synced Browser Bookmark Tagging Extension
 
+[![CI](https://github.com/adjmunro/webtags/actions/workflows/ci.yml/badge.svg)](https://github.com/adjmunro/webtags/actions/workflows/ci.yml)
+[![Release](https://github.com/adjmunro/webtags/actions/workflows/release.yml/badge.svg)](https://github.com/adjmunro/webtags/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 WebTags transforms your browser bookmarks into a powerful tagging system with automatic Git/GitHub synchronization across devices and browsers. Take control of your bookmarks with hierarchical tags, full version history, and complete data sovereignty.
 
 ## ✨ Features
@@ -60,16 +64,80 @@ WebTags transforms your browser bookmarks into a powerful tagging system with au
    - Hierarchical tag relationships
    - Human-readable and version-control friendly
 
+## 🔄 CI/CD Pipeline
+
+WebTags uses GitHub Actions for continuous integration and deployment:
+
+### Continuous Integration
+
+On every push to `master` and on pull requests, the CI pipeline:
+
+1. **Format Check** - Ensures code follows Rust formatting standards
+2. **Clippy Lints** - Runs Rust linter to catch common mistakes
+3. **Tests** - Runs all unit and integration tests on Ubuntu and macOS
+4. **Build** - Compiles native host and browser extension
+5. **Coverage** - Generates code coverage reports (uploaded to Codecov)
+
+All checks must pass before code is merged. View the CI status: [![CI Status](https://github.com/adjmunro/webtags/actions/workflows/ci.yml/badge.svg)](https://github.com/adjmunro/webtags/actions/workflows/ci.yml)
+
+### Release Automation
+
+When a version tag (e.g., `v0.2.0`) is pushed:
+
+1. **Create Release** - Automatically creates a GitHub release
+2. **Build Binaries** - Compiles for multiple platforms (Linux x64, macOS x64/ARM64)
+3. **Upload Assets** - Attaches binaries and checksums to the release
+4. **Update Homebrew** - Automatically updates the Homebrew formula
+
+### Local CI Simulation
+
+Run the same checks locally before pushing:
+
+```bash
+# Install just if you haven't already
+brew install just
+
+# Run all CI checks
+just ci
+```
+
+This runs formatting check, lints, tests, and builds - exactly like the CI pipeline.
+
 ## 📦 Installation
 
-### Prerequisites
+### Option 1: Homebrew (macOS - Recommended)
+
+The easiest way to install on macOS:
+
+```bash
+# Add the tap
+brew tap adjmunro/tap https://github.com/adjmunro/homebrew-tap
+
+# Install webtags
+brew install webtags
+
+# Follow the post-install instructions to set up native messaging
+```
+
+The Homebrew formula will:
+- Install the native messaging host binary
+- Provide manifest templates for Chrome/Firefox/Safari
+- Display setup instructions
+
+You'll still need to:
+1. Install the browser extension manually (Chrome Web Store/Firefox Add-ons coming soon)
+2. Link the native messaging manifest for your browser (instructions shown after install)
+
+### Option 2: Manual Installation
+
+For development or if you want to build from source:
+
+#### Prerequisites
 
 - **Rust**: 1.70 or higher ([install](https://rustup.rs/))
 - **Node.js**: 18 or higher ([install](https://nodejs.org/))
 - **Git**: For repository management
 - **GitHub Account**: For remote sync (free account works)
-
-### Quick Start
 
 #### 1. Clone and Build
 
