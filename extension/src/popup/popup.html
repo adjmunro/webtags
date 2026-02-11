@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebTags</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>WebTags</h1>
+      <button id="sync-btn" class="icon-btn" title="Manual Sync">
+        <span>🔄</span>
+      </button>
+      <button id="settings-btn" class="icon-btn" title="Settings">
+        <span>⚙️</span>
+      </button>
+    </div>
+
+    <!-- Status Bar -->
+    <div id="status-bar" class="status-bar hidden">
+      <span id="status-message"></span>
+    </div>
+
+    <!-- Main View (shown when initialized) -->
+    <div id="main-view" class="hidden">
+      <!-- Search Bar -->
+      <div class="search-container">
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Search bookmarks or tags..."
+          class="search-input"
+        />
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button id="tab-bookmarks" class="tab-btn active">Bookmarks</button>
+        <button id="tab-tags" class="tab-btn">Tags</button>
+      </div>
+
+      <!-- Bookmarks Tab Content -->
+      <div id="bookmarks-content" class="tab-content">
+        <div id="bookmarks-list" class="bookmarks-list">
+          <!-- Bookmarks will be populated here -->
+        </div>
+      </div>
+
+      <!-- Tags Tab Content -->
+      <div id="tags-content" class="tab-content hidden">
+        <div class="tags-header">
+          <button id="create-tag-btn" class="btn btn-primary">Create Tag</button>
+        </div>
+        <div id="tags-tree" class="tags-tree">
+          <!-- Tag hierarchy will be populated here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Setup View (shown when not initialized) -->
+    <div id="setup-view" class="hidden">
+      <h2>Welcome to WebTags</h2>
+      <p>Let's set up your bookmark repository.</p>
+
+      <div class="setup-options">
+        <button id="setup-new-btn" class="btn btn-primary">Create New Repository</button>
+        <button id="setup-clone-btn" class="btn btn-secondary">Clone Existing Repository</button>
+      </div>
+
+      <!-- New Repository Form -->
+      <div id="new-repo-form" class="setup-form hidden">
+        <h3>Create New Repository</h3>
+        <p>First, authenticate with GitHub:</p>
+        <button id="auth-github-btn" class="btn btn-primary">Authenticate with GitHub</button>
+        <div id="auth-status" class="hidden">
+          <p>✓ Authenticated</p>
+          <button id="create-repo-btn" class="btn btn-primary">Create Repository</button>
+        </div>
+      </div>
+
+      <!-- Clone Repository Form -->
+      <div id="clone-repo-form" class="setup-form hidden">
+        <h3>Clone Existing Repository</h3>
+        <input
+          type="text"
+          id="repo-url-input"
+          placeholder="https://github.com/user/webtags-bookmarks.git"
+          class="text-input"
+        />
+        <button id="clone-repo-btn" class="btn btn-primary">Clone Repository</button>
+      </div>
+    </div>
+
+    <!-- Settings View -->
+    <div id="settings-view" class="hidden">
+      <div class="settings-header">
+        <button id="back-to-main-btn" class="btn btn-secondary">← Back</button>
+        <h2>Settings</h2>
+      </div>
+
+      <div class="settings-section">
+        <h3>Repository</h3>
+        <div class="settings-item">
+          <label>Repository Path:</label>
+          <span id="repo-path">Not initialized</span>
+        </div>
+        <div class="settings-item">
+          <label>Last Sync:</label>
+          <span id="last-sync">Never</span>
+        </div>
+        <div class="settings-item">
+          <label>Status:</label>
+          <span id="repo-status">Unknown</span>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>GitHub Authentication</h3>
+        <div class="settings-item">
+          <button id="reauth-github-btn" class="btn btn-secondary">Re-authenticate</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
