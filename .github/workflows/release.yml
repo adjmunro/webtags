@@ -113,18 +113,38 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: homebrew-tap
 
-      - name: Calculate source archive SHA256
+      - name: Download binary SHA256s
         run: |
-          curl -sL https://github.com/adjmunro/webtags/archive/refs/tags/v${{ needs.create-release.outputs.version }}.tar.gz | shasum -a 256 | awk '{print $1}' > source.sha256
-          SHA256=$(cat source.sha256)
-          echo "SHA256=$SHA256" >> $GITHUB_ENV
+          # Download SHA256 files from release assets
+          curl -sL https://github.com/adjmunro/webtags/releases/download/v${{ needs.create-release.outputs.version }}/webtags-${{ needs.create-release.outputs.version }}-aarch64-macos.tar.gz.sha256 -o macos.sha256
+          curl -sL https://github.com/adjmunro/webtags/releases/download/v${{ needs.create-release.outputs.version }}/webtags-${{ needs.create-release.outputs.version }}-x86_64-linux.tar.gz.sha256 -o linux.sha256
+
+          # Extract just the hash (first field)
+          MACOS_SHA256=$(cat macos.sha256 | awk '{print $1}')
+          LINUX_SHA256=$(cat linux.sha256 | awk '{print $1}')
+
+          echo "macOS ARM64 SHA256: $MACOS_SHA256"
+          echo "Linux x86_64 SHA256: $LINUX_SHA256"
+
+          # Export for use in next step
+          echo "MACOS_SHA256=$MACOS_SHA256" >> $GITHUB_ENV
+          echo "LINUX_SHA256=$LINUX_SHA256" >> $GITHUB_ENV
 
       - name: Update formula
         run: |
           cd homebrew-tap
-          sed -i "s|url \".*\"|url \"https://github.com/adjmunro/webtags/archive/refs/tags/v${{ needs.create-release.outputs.version }}.tar.gz\"|" Formula/webtags.rb
-          sed -i "s|sha256 \".*\"|sha256 \"${{ env.SHA256 }}\"|" Formula/webtags.rb
-          sed -i "s|version \".*\"|version \"${{ needs.create-release.outputs.version }}\"|" Formula/webtags.rb
+          VERSION="${{ needs.create-release.outputs.version }}"
+
+          # Update macOS URL and SHA256
+          sed -i "s|url \"https://github.com/adjmunro/webtags/releases/download/v.*/webtags-.*-aarch64-macos.tar.gz\"|url \"https://github.com/adjmunro/webtags/releases/download/v${VERSION}/webtags-${VERSION}-aarch64-macos.tar.gz\"|" Formula/webtags.rb
+          sed -i "/aarch64-macos.tar.gz/,/sha256/ s|sha256 \".*\"|sha256 \"${{ env.MACOS_SHA256 }}\"|" Formula/webtags.rb
+
+          # Update Linux URL and SHA256
+          sed -i "s|url \"https://github.com/adjmunro/webtags/releases/download/v.*/webtags-.*-x86_64-linux.tar.gz\"|url \"https://github.com/adjmunro/webtags/releases/download/v${VERSION}/webtags-${VERSION}-x86_64-linux.tar.gz\"|" Formula/webtags.rb
+          sed -i "/x86_64-linux.tar.gz/,/sha256/ s|sha256 \".*\"|sha256 \"${{ env.LINUX_SHA256 }}\"|" Formula/webtags.rb
+
+          # Update version
+          sed -i "s|version \".*\"|version \"${VERSION}\"|" Formula/webtags.rb
 
       - name: Commit and push
         run: |
