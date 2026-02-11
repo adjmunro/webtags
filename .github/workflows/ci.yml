@@ -134,7 +134,7 @@ jobs:
           # Note: No cache until package-lock.json is committed
 
       - name: Install extension dependencies
-        run: cd extension && npm ci
+        run: cd extension && npm install
 
       - name: Build extension
         run: cd extension && npm run build
