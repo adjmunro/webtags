@@ -61,16 +61,34 @@ Return data to extension
 
 ### Touch ID Integration
 
-#### macOS Security Framework
-- Use `Security.framework` for biometric authentication
-- `kSecAccessControlBiometryAny` for Touch ID
-- `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` for device-specific keys
-- Prompt message: "WebTags needs to access your bookmarks"
+#### Implementation
+The encryption key is stored in macOS Keychain using the `security` command-line tool with proper access control flags:
+
+```bash
+security add-generic-password \
+  -a "master-key" \
+  -s "com.webtags.encryption" \
+  -w "$BASE64_KEY" \
+  -T ""  # Require authentication (Touch ID) for all apps
+```
+
+**Key Details:**
+- `-T ""` flag: Requires Touch ID/biometric authentication for access
+- Access control is set at keychain item creation time
+- macOS automatically prompts for Touch ID when the key is accessed
+- The Security Framework APIs are called via the `security` CLI for reliable Touch ID integration
+
+#### Why Use CLI Instead of Rust APIs?
+The `security-framework` and `security-framework-sys` crates don't provide stable, well-documented access to `SecAccessControl` with biometric flags. Using the `security` CLI tool ensures:
+- ✅ Reliable Touch ID prompts (no password prompts)
+- ✅ Proper access control configuration
+- ✅ Standard macOS keychain behavior
+- ✅ Future compatibility with macOS updates
 
 #### Fallback
-- If Touch ID unavailable, fall back to keychain password
-- User prompted to authenticate with system password
+- If Touch ID is unavailable (no hardware), macOS falls back to system password
 - Clear error messages for authentication failures
+- Graceful degradation on non-Touch ID capable devices
 
 ## User Experience
 
