@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tokio::time::sleep;
 
-const GITHUB_CLIENT_ID: &str = "webtags-client"; // TODO: Register OAuth app
+const GITHUB_CLIENT_ID: &str = "webtags-client"; // TODO: Replace with actual OAuth app client ID (Iv1.xxxxxxxxxxxx)
 const KEYRING_SERVICE: &str = "com.webtags.github";
 const KEYRING_USERNAME: &str = "github_token";
 

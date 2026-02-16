@@ -3,6 +3,7 @@
 
 pub mod encryption;
 pub mod git;
+pub mod git_url;
 pub mod github;
 pub mod messaging;
 pub mod storage;

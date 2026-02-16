@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
-use git2::{Cred, FetchOptions, PushOptions, RemoteCallbacks, Repository, Signature};
+use git2::{FetchOptions, PushOptions, RemoteCallbacks, Repository, Signature};
 use std::path::{Path, PathBuf};
+
+use crate::github;
 
 pub struct GitRepo {
     repo: Repository,
@@ -25,14 +27,41 @@ impl GitRepo {
     pub fn clone<P: AsRef<Path>>(url: &str, path: P) -> Result<Self> {
         let path = path.as_ref().to_path_buf();
 
-        // Create parent directories if they don't exist
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).context("Failed to create parent directories")?;
+            std::fs::create_dir_all(parent)?;
         }
 
-        let repo = Repository::clone(url, &path).context("Failed to clone repository")?;
+        // Set up smart credentials
+        let mut callbacks = RemoteCallbacks::new();
+        callbacks.credentials(Self::create_smart_credentials());
 
-        Ok(Self { repo, path })
+        let mut fetch_options = FetchOptions::new();
+        fetch_options.remote_callbacks(callbacks);
+
+        let mut builder = git2::build::RepoBuilder::new();
+        builder.fetch_options(fetch_options);
+
+        // Try original URL
+        match builder.clone(url, &path) {
+            Ok(repo) => {
+                log::info!("Successfully cloned from {url}");
+                Ok(Self { repo, path })
+            }
+            Err(e) => {
+                // If SSH URL failed and we have a token, try HTTPS
+                if (url.starts_with("git@") || url.starts_with("ssh://"))
+                    && github::get_token().is_ok()
+                {
+                    if let Ok(https_url) = crate::git_url::convert_ssh_to_https(url) {
+                        log::info!("SSH clone failed, trying HTTPS with stored token");
+                        if let Ok(repo) = builder.clone(&https_url, &path) {
+                            return Ok(Self { repo, path });
+                        }
+                    }
+                }
+                Err(e.into())
+            }
+        }
     }
 
     /// Get the repository path
@@ -119,6 +148,35 @@ impl GitRepo {
         Ok(commit_id)
     }
 
+    /// Create smart credential callback that tries multiple auth methods
+    fn create_smart_credentials(
+    ) -> impl FnMut(&str, Option<&str>, git2::CredentialType) -> Result<git2::Cred, git2::Error>
+    {
+        move |_url, username, allowed_types| {
+            // 1. Try SSH agent (developers with SSH keys)
+            if allowed_types.contains(git2::CredentialType::SSH_KEY) {
+                if let Some(username) = username {
+                    if let Ok(cred) = git2::Cred::ssh_key_from_agent(username) {
+                        log::info!("Using SSH key from agent");
+                        return Ok(cred);
+                    }
+                }
+            }
+
+            // 2. Try stored GitHub token from keychain
+            if allowed_types.contains(git2::CredentialType::USER_PASS_PLAINTEXT) {
+                if let Ok(token) = github::get_token() {
+                    log::info!("Using stored GitHub token");
+                    return git2::Cred::userpass_plaintext("x-access-token", &token);
+                }
+            }
+
+            // 3. Fallback to default credentials
+            log::warn!("No credentials available, using default");
+            git2::Cred::default()
+        }
+    }
+
     /// Push to remote
     pub fn push(&self, remote_name: &str, branch: &str) -> Result<()> {
         let mut remote = self
@@ -128,17 +186,7 @@ impl GitRepo {
 
         // Set up callbacks for authentication
         let mut callbacks = RemoteCallbacks::new();
-        callbacks.credentials(|_url, username_from_url, _allowed_types| {
-            // Try SSH key first
-            if let Some(username) = username_from_url {
-                if let Ok(cred) = Cred::ssh_key_from_agent(username) {
-                    return Ok(cred);
-                }
-            }
-
-            // Fallback to default
-            Cred::default()
-        });
+        callbacks.credentials(Self::create_smart_credentials());
 
         let mut push_options = PushOptions::new();
         push_options.remote_callbacks(callbacks);
@@ -160,14 +208,7 @@ impl GitRepo {
             .context("Failed to find remote")?;
 
         let mut callbacks = RemoteCallbacks::new();
-        callbacks.credentials(|_url, username_from_url, _allowed_types| {
-            if let Some(username) = username_from_url {
-                if let Ok(cred) = Cred::ssh_key_from_agent(username) {
-                    return Ok(cred);
-                }
-            }
-            Cred::default()
-        });
+        callbacks.credentials(Self::create_smart_credentials());
 
         let mut fetch_options = FetchOptions::new();
         fetch_options.remote_callbacks(callbacks);
