@@ -68,7 +68,10 @@ impl GitHubClient {
             .client
             .post("https://github.com/login/device/code")
             .header("Accept", "application/json")
-            .form(&[("client_id", GITHUB_CLIENT_ID)])
+            .form(&[
+                ("client_id", GITHUB_CLIENT_ID),
+                ("scope", "repo"), // Full access to private repositories
+            ])
             .send()
             .await
             .context("Failed to start device flow")?;
