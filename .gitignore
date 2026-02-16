@@ -36,3 +36,4 @@ yarn-error.log*
 # Claude/Agent symlinks
 CLAUDE.md
 **/CLAUDE.md
+.mise.toml
