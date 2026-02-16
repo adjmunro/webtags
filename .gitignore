@@ -37,3 +37,7 @@ yarn-error.log*
 CLAUDE.md
 **/CLAUDE.md
 .mise.toml
+# Playwright test artifacts
+playwright-report/
+test-results/
+*.output
